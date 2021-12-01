@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 fn p1_naive(data: &[u32]) -> u32 {
     let mut res = 0;
     'a: for (idx1, n1) in data.iter().enumerate() {
@@ -11,6 +12,7 @@ fn p1_naive(data: &[u32]) -> u32 {
     res
 }
 
+#[allow(dead_code)]
 fn p2_naive(data: &[u32]) -> u32 {
     let mut res = 0;
     'a: for (idx1, n1) in data.iter().enumerate() {
@@ -26,6 +28,7 @@ fn p2_naive(data: &[u32]) -> u32 {
     res
 }
 
+#[allow(dead_code)]
 fn solve_day_naive(input: String) -> (u32, u32) {
     let data: Vec<u32> = input.lines().map(|x| x.parse::<u32>().unwrap()).collect();
 
@@ -35,6 +38,8 @@ fn solve_day_naive(input: String) -> (u32, u32) {
 }
 
 use itertools::Itertools;
+
+#[allow(dead_code)]
 fn solve_day_itertools(input: String) -> (u32, u32) {
     let data: Vec<u32> = input.lines().map(|x| x.parse::<u32>().unwrap()).collect();
 
