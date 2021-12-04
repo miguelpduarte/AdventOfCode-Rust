@@ -70,3 +70,15 @@ Furthermore, Rust in release mode still nets a staggering "0ms" performance. :D
 In hindsight, maybe something like a `trie` would be relevant for this problem. I've never worked with one so that might be interesting.
 
 The code is kind of ugly though, and would benefit from at least some extraction to other functions. It's late though, and I'm not feeling like spending any more time looking at the same code, so maybe sometime in the future I'll try to clean this a bit, I guess.
+
+## Day 4
+
+Changed the benchmarks to use debug print with `now.elapsed()` since that can print smaller than `0ms`! :D  
+Idea stolen from [this repo](https://github.com/wfxr/advent-of-code-2021).
+
+Well, this one was mostly parsing and all. I had a couple of bugs and had to fight the borrow checker for a bit, before simply thinking of using indices to the `Vec`. That was much easier and avoided having to convert references back and forth, by being able to access the item with a mutable reference and change it via the index, and then get an immutable reference via the index again, using `.get`.
+
+For part 1 an annoying issue was in parsing the board, which was fixed by using `.split_whitespace` instead of `.split(' ')`. This is probably due to there being several spaces between some values. A particularly insidious bug in this part was also that my parsing assumed the file had an empty line in the end, to "close" the board creation. It did not, so I just had to copy paste some code to below the loop over the input lines :grin:  
+Thankfully it was "easy" to notice this after deriving debug on the used structs, and then printing them in the loop. It became obvious that the boards were fine, but one was missing!
+
+In part 2 I forgot to check if a board had already won. This was easily fixed by adding a `bool` to `Board`. Not the most elegant solution, but it works.
