@@ -21,10 +21,10 @@ macro_rules! day_main {
         fn main() {
             let now = std::time::Instant::now();
             let (res1, res2) = solve_day();
-            let time = now.elapsed().as_millis();
+            let time = now.elapsed();
             println!("Part 1: {}", res1);
             println!("Part 2: {}", res2);
-            println!("Time: {}ms", time);
+            println!("Time: {:?}", time);
         }
     };
 
@@ -36,10 +36,10 @@ macro_rules! day_main {
 
             let now = std::time::Instant::now();
             let (res1, res2) = solve_day(input);
-            let time = now.elapsed().as_millis();
+            let time = now.elapsed();
             println!("Part 1: {}", res1);
             println!("Part 2: {}", res2);
-            println!("Time: {}ms", time);
+            println!("Time: {:?}", time);
         }
     };
 }
@@ -52,6 +52,6 @@ macro_rules! benchmark_fn {
         // TODO: Find out how to handle returning values back to the caller elegantly, what is the
         // best way to return the time (or just print it?)
         $fn_name();
-        let time = now.elapsed().as_millis();
+        let time = now.elapsed();
     };
 }
