@@ -82,3 +82,15 @@ For part 1 an annoying issue was in parsing the board, which was fixed by using 
 Thankfully it was "easy" to notice this after deriving debug on the used structs, and then printing them in the loop. It became obvious that the boards were fine, but one was missing!
 
 In part 2 I forgot to check if a board had already won. This was easily fixed by adding a `bool` to `Board`. Not the most elegant solution, but it works.
+
+## Day 5
+
+First day that running with `--release` is over 1ms... :(
+
+Might optimize later just due to that. However, large matrix, not sure if there is much to be done.
+
+Part 1 was relatively simple, just had to handle when the movement was "in reverse". In part 2 I can't use the same technique since getting the lowest x and y and going to the highest x and y is not the same in diagonal (for example, `0,2` to `2,0` is not the same as `0,0` to `2,2`, which my code was doing).
+
+Had to create a helper function to handle getting the iterator to go in the right direction, despite `Range` only going in the increasing direction. The helper function was kind of troublesome due to the return type, which I wanted to be an `Iterator`, which is a trait. `Box` helped, and I learned a little about this type.
+
+Sadly runtime is still at 2.6 to 3 milliseconds for both parts. It is still quite fast, but I would like to see if I can get it a bit lower with some sort of optimizations, let's see.

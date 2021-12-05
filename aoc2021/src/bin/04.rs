@@ -103,6 +103,7 @@ fn solve_day(input: String) -> (usize, usize) {
     let mut board_numbers_acc = Vec::<BoardNumber>::new();
     let mut line = 0;
 
+    // Maybe an enumerate instead of the mut line is more efficient here? TODO: test that
     for input_line in input_lines {
         match input_line {
             "" => {
