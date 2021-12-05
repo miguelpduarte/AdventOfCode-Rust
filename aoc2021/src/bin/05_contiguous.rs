@@ -31,7 +31,8 @@ fn solve_day(input: String) -> (usize, usize) {
     // TODO: Maybe there can be less u8's if I used a larger uint and bit operations?
     // const MAT_SIZE: usize = 10; // For the example input, to have readable printing
     const MAT_SIZE: usize = 990;
-    let mut vent_overlap_matrix = [[0_u8; MAT_SIZE]; MAT_SIZE];
+    // Using a contiguous array to test if it is faster
+    let mut vent_overlap_matrix = [0_u8; MAT_SIZE * MAT_SIZE];
 
     // for line in vent_overlap_matrix.iter() {
     //     println!("{:?}", line);
@@ -44,8 +45,6 @@ fn solve_day(input: String) -> (usize, usize) {
     // .inspect(|((x1, y1), (x2, y2))| println!("{},{} to {},{}", x1, y1, x2, y2))
     hor_vert_lines.iter().for_each(|((x1, y1), (x2, y2))| {
         // Because someone thought it was funny to go in reverse
-        // (By the way this is faster than the range reversing used for part 2 - Maybe due to the
-        // Box heap allocations?)
         use std::cmp;
         let x_start = cmp::min(*x1, *x2);
         let x_end = cmp::max(*x1, *x2);
@@ -54,7 +53,7 @@ fn solve_day(input: String) -> (usize, usize) {
 
         for i in x_start..=x_end {
             for j in y_start..=y_end {
-                vent_overlap_matrix[j][i] += 1;
+                vent_overlap_matrix[j * MAT_SIZE + i] += 1;
             }
         }
 
@@ -72,12 +71,12 @@ fn solve_day(input: String) -> (usize, usize) {
 
     let p1_matrix_sum: usize = vent_overlap_matrix
         .iter()
-        .map(|line| line.iter().filter(|&item| *item >= 2).count())
-        .sum();
+        .filter(|&item| *item >= 2)
+        .count();
 
     diag_lines.iter().for_each(|((x1, y1), (x2, y2))| {
         for (i, j) in create_inclusive_range(*x1, *x2).zip(create_inclusive_range(*y1, *y2)) {
-            vent_overlap_matrix[j][i] += 1;
+            vent_overlap_matrix[j * MAT_SIZE + i] += 1;
         }
     });
 
@@ -87,8 +86,8 @@ fn solve_day(input: String) -> (usize, usize) {
 
     let p2_matrix_sum: usize = vent_overlap_matrix
         .iter()
-        .map(|line| line.iter().filter(|&item| *item >= 2).count())
-        .sum();
+        .filter(|&item| *item >= 2)
+        .count();
 
     (p1_matrix_sum, p2_matrix_sum)
 }

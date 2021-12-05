@@ -94,3 +94,13 @@ Part 1 was relatively simple, just had to handle when the movement was "in rever
 Had to create a helper function to handle getting the iterator to go in the right direction, despite `Range` only going in the increasing direction. The helper function was kind of troublesome due to the return type, which I wanted to be an `Iterator`, which is a trait. `Box` helped, and I learned a little about this type.
 
 Sadly runtime is still at 2.6 to 3 milliseconds for both parts. It is still quite fast, but I would like to see if I can get it a bit lower with some sort of optimizations, let's see.
+
+---
+
+Post-initial-implementation: Trying some things to see if they would make the code faster.
+
+* Make the array contiguous and access the values with `j * width + i`: The runtime seems to be marginally better, with an average of maybe 0.1ms less? (all "non-scientific" benchmarks - should really consider using nightly for `cargo bench` or use `Criterion` instead).
+* Use a Map instead of Array: This is mostly to learn the syntax since sometimes maps are useful. Figured out the Entry API is pretty awesome. The time went from about 3ms or lower, to 25-28ms though. Oof.
+* Use a Map with `usize` as key instead of `(usize, usize)`: Trying to reduce the overhead for the keys. Actually reduces the time a bit, now around 18-20ms. If initial capacity is given via `HashMap::with_capacity`, this value decreases to about 17-19ms.
+
+Probably should try something like `rayon` just to see how fast I can go. The issue is that the way the access to the matrix is done currently is not friendly with parallelism. Maybe with clippy's recommendation to use iterators + take and skip instead of the current for loops over a range it would work. TODO
