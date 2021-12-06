@@ -83,6 +83,23 @@ Thankfully it was "easy" to notice this after deriving debug on the used structs
 
 In part 2 I forgot to check if a board had already won. This was easily fixed by adding a `bool` to `Board`. Not the most elegant solution, but it works.
 
+---
+
+Reimplementing with a list of 10 sets per board to compare performance.
+
+Currently fighting the `Copy` trait needing to be implemented if I want to do something like `let mut x = [HashSet::new(); 10];` and then reassigning `x` to the same value to "reset" it. There is probably a more elegant option for this, like dropping the value by letting it go out of an inner scope or something.  
+Anyway, "solving" that by using `Vec<HashSet>` instead, unfortunately (heap instead of stack). This way the `Vec` is moved into the function, which takes ownership of it without needing any copy. This has got me thinking that maybe passing a ref to the array and calling clone would also work hmm.
+
+Runtime of this version is about 1-2ms, as opposed to the 0.4ms of the initial solution.
+
+---
+
+Reimplementing with arrays (fully in the stack) + helper arrays to register the number of already picked numbers for each row and col.
+
+Much faster, 0.2ms average instead of the 0.4ms of the original solution, which is about half of the time.
+
+As someone once said: `"Arrays go brrr"`
+
 ## Day 5
 
 First day that running with `--release` is over 1ms... :(

@@ -1,30 +1,15 @@
-#[derive(Debug, Clone)]
-struct BoardNumber {
-    value: u16,
-    line: u16,
-    col: u16,
-    called: bool,
-}
-
-impl BoardNumber {
-    fn new(value: u16, line: u16, col: u16) -> Self {
-        Self {
-            value,
-            line,
-            col,
-            called: false,
-        }
-    }
-}
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 struct Board {
-    numbers: Vec<BoardNumber>,
+    // 10 sets, 5 rows and 5 cols. 0-4 are rows, 5-9 are cols
+    numbers: Vec<HashSet<u16>>,
     already_won: bool,
 }
 
 impl Board {
-    fn new(board_numbers: Vec<BoardNumber>) -> Self {
+    fn new(board_numbers: Vec<HashSet<u16>>) -> Self {
+        assert!(board_numbers.len() == 10);
         Self {
             numbers: board_numbers,
             already_won: false,
@@ -36,52 +21,38 @@ impl Board {
             return false;
         }
 
-        // Find called number
-        let found_num_idx = self.numbers.iter().position(|b_num| b_num.value == called);
+        let mut won = false;
 
-        match found_num_idx {
-            Some(found_num_idx) => {
-                // Get the found item and mark it as called
-                self.numbers[found_num_idx].called = true;
-
-                // Get a ref to the called number to use in the following lines
-                let found_num: &BoardNumber = self.numbers.get(found_num_idx).unwrap();
-
-                // Check if this board won using the called number's col and line
-                // Check for col
-                let col_all_called = self
-                    .numbers
-                    .iter()
-                    .filter(|b_num| b_num.col == found_num.col)
-                    .all(|b_num| b_num.called);
-                // Check for line
-                let line_all_called = self
-                    .numbers
-                    .iter()
-                    .filter(|b_num| b_num.line == found_num.line)
-                    .all(|b_num| b_num.called);
-
-                if col_all_called || line_all_called {
-                    self.already_won = true;
-                }
-
-                // This does not short circuit I guess (running both iterators?) but is more
-                // elegant than checking either straight away I guess
-                col_all_called || line_all_called
+        for num_set in self.numbers.iter_mut() {
+            won |= if num_set.remove(&called) {
+                // Removed one, check if set is empty (which would mean bingo)
+                num_set.is_empty()
+            } else {
+                false
             }
-            // Called number not in board, so can't win
-            None => false,
         }
+
+        if won {
+            self.already_won = true;
+        }
+
+        won
     }
 
     fn calc_score(&self, last_called: u16) -> u16 {
-        let sum_unmarked_numbers: u16 = self
-            .numbers
-            .iter()
-            .filter(|bn| !bn.called)
-            .map(|bn| bn.value)
-            .sum();
-        sum_unmarked_numbers * last_called
+        // At most there are 25 numbers in a board. There will always be less items in the set
+        // since this is only called when the board wins but oh well
+        let mut total_nums = HashSet::<u16>::with_capacity(25);
+
+        for num_set in self.numbers.iter() {
+            for &num in num_set {
+                total_nums.insert(num);
+            }
+        }
+
+        let sum_unmarked: u16 = total_nums.iter().sum();
+
+        sum_unmarked * last_called
     }
 }
 
@@ -100,11 +71,10 @@ fn solve_day(input: String) -> (usize, usize) {
     input_lines.next().unwrap();
 
     let mut boards = Vec::<Board>::new();
-    let mut board_numbers_acc = Vec::<BoardNumber>::new();
+    let mut board_numbers_acc = vec![HashSet::new(); 10];
     let mut line = 0;
 
-    // Maybe an enumerate instead of the mut line is more efficient here?
-    // Lol no, because that would go over 25 and count empty lines
+    // Maybe an enumerate instead of the mut line is more efficient here? TODO: test that
     for input_line in input_lines {
         match input_line {
             "" => {
@@ -112,18 +82,19 @@ fn solve_day(input: String) -> (usize, usize) {
                 let board = Board::new(board_numbers_acc);
                 boards.push(board);
 
-                board_numbers_acc = Vec::<BoardNumber>::new();
+                board_numbers_acc = vec![HashSet::new(); 10];
                 line = 0;
             }
             input_line => {
-                let mut line_boardnumbers = input_line
+                input_line
                     .split_whitespace()
                     .map(str::parse::<u16>)
                     .map(Result::unwrap)
                     .enumerate()
-                    .map(|(col, val)| BoardNumber::new(val, line, col as u16))
-                    .collect::<Vec<BoardNumber>>();
-                board_numbers_acc.append(&mut line_boardnumbers);
+                    .for_each(|(col, val)| {
+                        board_numbers_acc[line].insert(val);
+                        board_numbers_acc[col + 5].insert(val);
+                    });
                 line += 1;
             }
         }

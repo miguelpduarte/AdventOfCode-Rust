@@ -1,86 +1,57 @@
 #[derive(Debug, Clone)]
-struct BoardNumber {
-    value: u16,
-    line: u16,
-    col: u16,
-    called: bool,
-}
-
-impl BoardNumber {
-    fn new(value: u16, line: u16, col: u16) -> Self {
-        Self {
-            value,
-            line,
-            col,
-            called: false,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 struct Board {
-    numbers: Vec<BoardNumber>,
+    numbers: [i32; 25],
+    // Number of items that already bingo'd in a col/row
+    cols_found: [u8; 5],
+    rows_found: [u8; 5],
+
     already_won: bool,
 }
 
 impl Board {
-    fn new(board_numbers: Vec<BoardNumber>) -> Self {
+    fn new(board_numbers: [i32; 25]) -> Self {
         Self {
             numbers: board_numbers,
+            cols_found: [0_u8; 5],
+            rows_found: [0_u8; 5],
             already_won: false,
         }
     }
 
-    fn mark_called_and_check_win(&mut self, called: u16) -> bool {
+    fn mark_called_and_check_win(&mut self, called: i32) -> bool {
         if self.already_won {
             return false;
         }
 
         // Find called number
-        let found_num_idx = self.numbers.iter().position(|b_num| b_num.value == called);
+        let found_num_idx = self.numbers.iter().position(|&num| num == called);
 
-        match found_num_idx {
+        let won = match found_num_idx {
             Some(found_num_idx) => {
                 // Get the found item and mark it as called
-                self.numbers[found_num_idx].called = true;
+                self.numbers[found_num_idx] = -1;
 
-                // Get a ref to the called number to use in the following lines
-                let found_num: &BoardNumber = self.numbers.get(found_num_idx).unwrap();
+                let col = found_num_idx % 5;
+                let row = found_num_idx / 5;
 
-                // Check if this board won using the called number's col and line
-                // Check for col
-                let col_all_called = self
-                    .numbers
-                    .iter()
-                    .filter(|b_num| b_num.col == found_num.col)
-                    .all(|b_num| b_num.called);
-                // Check for line
-                let line_all_called = self
-                    .numbers
-                    .iter()
-                    .filter(|b_num| b_num.line == found_num.line)
-                    .all(|b_num| b_num.called);
+                self.cols_found[col] += 1;
+                self.rows_found[row] += 1;
 
-                if col_all_called || line_all_called {
-                    self.already_won = true;
-                }
-
-                // This does not short circuit I guess (running both iterators?) but is more
-                // elegant than checking either straight away I guess
-                col_all_called || line_all_called
+                self.cols_found[col] == 5 || self.rows_found[row] == 5
             }
             // Called number not in board, so can't win
             None => false,
+        };
+
+        if won {
+            self.already_won = true;
         }
+
+        won
     }
 
-    fn calc_score(&self, last_called: u16) -> u16 {
-        let sum_unmarked_numbers: u16 = self
-            .numbers
-            .iter()
-            .filter(|bn| !bn.called)
-            .map(|bn| bn.value)
-            .sum();
+    fn calc_score(&self, last_called: i32) -> i32 {
+        let sum_unmarked_numbers: i32 = self.numbers.iter().filter(|&num| *num != -1).sum();
         sum_unmarked_numbers * last_called
     }
 }
@@ -92,7 +63,7 @@ fn solve_day(input: String) -> (usize, usize) {
         .next()
         .unwrap()
         .split(',')
-        .map(str::parse::<u16>)
+        .map(str::parse::<i32>)
         .map(Result::unwrap)
         .collect::<Vec<_>>();
 
@@ -100,11 +71,12 @@ fn solve_day(input: String) -> (usize, usize) {
     input_lines.next().unwrap();
 
     let mut boards = Vec::<Board>::new();
-    let mut board_numbers_acc = Vec::<BoardNumber>::new();
+    let mut board_numbers_acc = [-1; 25];
     let mut line = 0;
 
     // Maybe an enumerate instead of the mut line is more efficient here?
-    // Lol no, because that would go over 25 and count empty lines
+    // Lol no, because enumerate in this will > 25, since it will keep accumulating and also count
+    // empty lines
     for input_line in input_lines {
         match input_line {
             "" => {
@@ -112,18 +84,18 @@ fn solve_day(input: String) -> (usize, usize) {
                 let board = Board::new(board_numbers_acc);
                 boards.push(board);
 
-                board_numbers_acc = Vec::<BoardNumber>::new();
+                board_numbers_acc = [0; 25];
                 line = 0;
             }
             input_line => {
-                let mut line_boardnumbers = input_line
+                input_line
                     .split_whitespace()
-                    .map(str::parse::<u16>)
+                    .map(str::parse::<i32>)
                     .map(Result::unwrap)
                     .enumerate()
-                    .map(|(col, val)| BoardNumber::new(val, line, col as u16))
-                    .collect::<Vec<BoardNumber>>();
-                board_numbers_acc.append(&mut line_boardnumbers);
+                    .for_each(|(col, val)| {
+                        board_numbers_acc[line * 5 + col] = val;
+                    });
                 line += 1;
             }
         }
