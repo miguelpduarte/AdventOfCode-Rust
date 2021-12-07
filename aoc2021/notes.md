@@ -121,3 +121,33 @@ Post-initial-implementation: Trying some things to see if they would make the co
 * Use a Map with `usize` as key instead of `(usize, usize)`: Trying to reduce the overhead for the keys. Actually reduces the time a bit, now around 18-20ms. If initial capacity is given via `HashMap::with_capacity`, this value decreases to about 17-19ms.
 
 Probably should try something like `rayon` just to see how fast I can go. The issue is that the way the access to the matrix is done currently is not friendly with parallelism. Maybe with clippy's recommendation to use iterators + take and skip instead of the current for loops over a range it would work. TODO
+
+## Day 6
+
+Naive implementations are fun, but not very efficient. Part 2 made me realise that when my code crashed my PC. (Well kinda, but let's pretend that was the case since that's funnier)
+
+The typical problem of indexing `index -> stage` is solved with much lower memory usage by swapping to `stage -> nr_items`.
+
+There are several solutions, the initial ones being `06.rs` (basically only works for part 1 due to the high memory usage) and `06_smort.rs` that uses a `VecDeque` to shift items around (decrementing states) using `rotate_left` instead of moving the values. `06_smort` score about 45-50-something microseconds on average, which was nice.
+
+The other solutions are:
+
+* `06_smort_arrs` - using native arrays instead of `VecDeque` and instead of moving the items around, just indexing on them with a "shift" integer that wraps around. Very similar in time to the `VecDeque` solution (though slightly faster and more consistent), averaging something like 40-48 microseconds.
+* `06_rekicho` - [`@Rekicho`](https://github.com/Rekicho)'s solution, adapted to fit my structure so we could time it in the same basis. Kind of naive by copying the arrays in every iteration, but still ridiculously fast, averaging something like 5.5-6.5 microseconds.
+* `06_rekicho_clipped` - The same as `06_rekicho` but after applying `clippy`'s suggestions (removing `.clone` and "replacing the loop by: `values[..(9 - 1)].clone_from_slice(&old_values[1..9]);`"). Seems to be marginally slower, though, which is funny, averaging 7-8 microseconds. Probably due to the assignments being grouped before the change, and now they are split in two parts: that memcpy and the assignment in the lines after. Removing the call to `.clone` had no impact in performance, which makes sense since `[u64]` is `Copy`, which makes it so that `.copy` is used instead of `.clone` AFAIK.
+* `06_smort_arrs_better_init` - A reimplementation of my array solution, with faster initialization. Basically used iterators a bit less: `.map`'ed only once instead of 3 with method references, and instead of counting the number of elements of each type to initialize the array, iterated over the dataset, incrementing the respective index. Since the data initialization and access are both quite fast, this makes sense to be quite a bit faster. Average is around x-y microseconds.
+
+ Takeaways:
+
+* `.map`'ing several times with method references is much slower than doing it just once with a closure that chains all the operations. I thought this would've been optimized by the compiler, but it seems that this is not the case. This is the part where we are benchmarking input parsing though, which already shows how much we are squeezing lol.
+* Turns out that moving the values is quite efficient, since they implement `Copy` and are quite small (only 9 64-bit unsigned values). I think implementing `Copy` enables the usage of `memcpy` which probably justifies the speed. (This was "discovered" by looking at `06_rekicho` and comparing it to the other ones - it had no right being this fast!)
+
+Comparing the different solutions for today was quite fun! I've never felt the pull of this kind of optimization and algorithm tinkering, but AoC+Rust seems to be quite the combo for me!
+
+ I'll probably start using [`criterion`](https://crates.io/crates/criterion) for benchmarking soon, especially if I can fit it nicely in my current macros. This should provide a more consistent base for benchmarking all the things :D
+
+ A mathematical solution using an expression that says how many fish a fish will generate for day `d` is likely possible and quite interesting, as that could even be evaluated in compile time, I guess.
+
+ ----
+
+ On an unrelated note, today I had some trouble with `ALE` + `rust-analyzer` which sometimes seemed to lag behind a bit, showing errors for lines that were there 5-8 edits ago... Sometimes disabling and enabling ALE worked, or restarting vim, but it was still quite strange and a big productivity downgrade.
