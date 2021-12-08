@@ -135,7 +135,7 @@ The other solutions are:
 * `06_smort_arrs` - using native arrays instead of `VecDeque` and instead of moving the items around, just indexing on them with a "shift" integer that wraps around. Very similar in time to the `VecDeque` solution (though slightly faster and more consistent), averaging something like 40-48 microseconds.
 * `06_rekicho` - [`@Rekicho`](https://github.com/Rekicho)'s solution, adapted to fit my structure so we could time it in the same basis. Kind of naive by copying the arrays in every iteration, but still ridiculously fast, averaging something like 5.5-6.5 microseconds.
 * `06_rekicho_clipped` - The same as `06_rekicho` but after applying `clippy`'s suggestions (removing `.clone` and "replacing the loop by: `values[..(9 - 1)].clone_from_slice(&old_values[1..9]);`"). Seems to be marginally slower, though, which is funny, averaging 7-8 microseconds. Probably due to the assignments being grouped before the change, and now they are split in two parts: that memcpy and the assignment in the lines after. Removing the call to `.clone` had no impact in performance, which makes sense since `[u64]` is `Copy`, which makes it so that `.copy` is used instead of `.clone` AFAIK.
-* `06_smort_arrs_better_init` - A reimplementation of my array solution, with faster initialization. Basically used iterators a bit less: `.map`'ed only once instead of 3 with method references, and instead of counting the number of elements of each type to initialize the array, iterated over the dataset, incrementing the respective index. Since the data initialization and access are both quite fast, this makes sense to be quite a bit faster. Average is around x-y microseconds.
+* `06_smort_arrs_better_init` - A reimplementation of my array solution, with faster initialization. Basically used iterators a bit less: `.map`'ed only once instead of 3 with method references, and instead of counting the number of elements of each type to initialize the array, iterated over the dataset, incrementing the respective index. Since the data initialization and access are both quite fast, this makes sense to be quite a bit faster. Average is around 5-6 microseconds.
 
  Takeaways:
 
@@ -157,6 +157,14 @@ Comparing the different solutions for today was quite fun! I've never felt the p
  Moving the trim to the initial string and removing it from inside the map reduced the runtime one more microsecond on average lol.
 
  Also have to try improving the initialization of the `VecDeque` version.
+
+ ----
+
+ Some more experimentation after solving day 7:
+
+ * It checks out that the bottleneck of the `VecDeque` solution (at least initially) was the input parsing. `06_smort_betterinit` now has very similar runtime to its array-based counterpart, averaging something like 6-7 microseconds of runtime. The major changes were joining the parsing map operations as a single chained call; increment the values directly in the `VecDeque` instead of creating an array from "expensive" iterator operations and then initializing using that; and remove an unnecessary `.trim` call that was being ran on the map operation chain instead of only once in the initial string.
+ * For the array-based solution: It seems that merging the parsing operations in the initialization loop has a very similar runtime to creating the iterator with the operations and then looping over it. This makes sense given that iterators are lazy-evaluated.
+ * Also for the array-based solution: storing the count of the number of fish after initialization, and then incrementing it as days go by seems to be marginally more efficient than running 2 sums (1 for each part). This makes sense, but has a very minimal impact on performance. Nevertheless, it seems to be there, reducing the average from 5-6 us to 4.7-5.3 microseconds. This is a very _finicky_ comparison, though, given the very low run times which are easily impacted by external factors such as system load. (_I should really start using actual benchmarks to compare things..._)
 
  ## Day 7
 

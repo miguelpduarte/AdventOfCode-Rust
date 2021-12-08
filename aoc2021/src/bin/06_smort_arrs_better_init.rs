@@ -1,11 +1,18 @@
 fn solve_day(input: String) -> (usize, usize) {
-    let input_iter = input.split(',').map(|x| x.trim().parse::<usize>().unwrap());
+    let input_iter = input.trim().split(',').map(|x| x.parse::<usize>().unwrap());
 
     let mut fish_stages = [0; 9];
+    let mut n_fish: usize = 0;
 
     for elem in input_iter {
         fish_stages[elem] += 1;
+        n_fish += 1;
     }
+
+    // for elem in input.trim().split(',') {
+    //     let fish_init_state = elem.parse::<usize>().unwrap();
+    //     fish_stages[fish_init_state] += 1;
+    // }
 
     // let mut n_fish = input_iter.count();
     // Instead of rotating we can just index with a shift
@@ -16,20 +23,20 @@ fn solve_day(input: String) -> (usize, usize) {
         // fish_stages.rotate_left(1); // Done via the index_shift
         index_shift = (index_shift + 1) % 9;
         fish_stages[(6 + index_shift) % 9] += n_new_fishes;
-        // n_fish += n_new_fishes;
+        n_fish += n_new_fishes;
     }
 
-    let p1 = fish_stages.iter().sum();
+    let p1 = n_fish;
 
     for _day in 0..176 {
         let n_new_fishes = fish_stages[index_shift];
         // fish_stages.rotate_left(1); // Done via the index_shift
         index_shift = (index_shift + 1) % 9;
         fish_stages[(6 + index_shift) % 9] += n_new_fishes;
-        // n_fish += n_new_fishes;
+        n_fish += n_new_fishes;
     }
 
-    let p2 = fish_stages.iter().sum();
+    let p2 = n_fish;
 
     (p1, p2)
 }
