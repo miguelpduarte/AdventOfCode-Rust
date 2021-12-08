@@ -184,7 +184,7 @@ Well, [`xRuiAlves`](https://github.com/xRuiAlves) helped me by shedding some lig
 Onto optimization:
 * Having 2 separate `.map.sum`s  seems to be either similar or marginally better than having a single loop and accumulating both floor and ceiling count in two separate mutable accumulators.
 * It is more efficient to use `.map.sum` for part 1 than to use a `for` loop and accumulate into a local variable.
-* TODO: There is an O(n) way to implement median. Investigate that, it's probably faster :D
+* TODO: There is an O(n) way to implement median. Investigate that, as it's very likely faster than the current implementation :D
 
 Today's implementation averaged about 64-70 microseconds. It seems a bit high, especially compared with yesterday which performed a lot of iterations on a loop. This is just calculating a median and average, which feels like it should be as hard. Maybe I can implement the improved median algorithm and try to merge operations, such as a sum and length calculation? Length might be optimized by the underlying container, but if the sum is joined with other operations, it may help.
 
@@ -201,3 +201,11 @@ Eventually found the mistake: I was considering that `5 | 4` would have only 1 s
 My second mistake (more of a derp, really) was not thoroughly reading the problem statement, and just adding all of the digits in a number instead of "concatenating" them. lol.
 
 In the end, the solution was considerably fast considering how "hammered" it is, with the (possibly infinite) loop to get the correspondence and all, averaging something like 230-250 microseconds. It is still under 1ms, so I am quite happy with it, but I've also identified some potential performance improvements, such as "branching out" on digit-determination possibilities (have more ways to decide on each digit) so that less iterations are required to decide on every digit, or improving the parsing if possible.
+
+---
+
+It seems that the "branching out" idea might not be necessary, given that for the final input, the loop mostly runs twice, sometimes running only once! I attribute this to my care in trying to depend solely on the "easy" digits to determine the others, which makes it so that at most everything can be determined in 2 iterations.
+
+Changing the parsing to use subtraction + bit-shifts (`1 << (input - b'a')`) instead of the previously-existing match statement seems to have had little to no impact in performance, which goes to show how well optimized `match` is! Nice! I'm even rolling back to the `match` solution since it panics when the input is not within the expected values, which adds safety to the solution.
+
+The next step in testing performance would likely be to experiment with using `HashMap`s, at least in replacement of the `signal_to_value` array, which is quite sparse (255 `usize` elements and only 10 are ever used). It is likely that arrays will win again but nothing like running some benchmarks to be sure! :D TODO

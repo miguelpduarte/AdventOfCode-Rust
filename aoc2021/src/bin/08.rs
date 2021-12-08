@@ -5,8 +5,10 @@ type SignalBitmask = u8;
 
 /// Returns the respective bit set, to use in parse_to_signalbitmask
 fn parse_bytechar_to_byte(input: u8) -> u8 {
-    // TODO: Probably doable with simple math (since input is a byte with a certain value, and the other
-    // values are sequential)
+    // This has the same result and performs the same
+    // As such, keeping the solution below, as it is more explicit and has "error handling"
+    // 1 << (input - b'a')
+
     match input {
         b'a' => 0b0000_0001,
         b'b' => 0b0000_0010,
