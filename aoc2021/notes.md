@@ -151,3 +151,32 @@ Comparing the different solutions for today was quite fun! I've never felt the p
  ----
 
  On an unrelated note, today I had some trouble with `ALE` + `rust-analyzer` which sometimes seemed to lag behind a bit, showing errors for lines that were there 5-8 edits ago... Sometimes disabling and enabling ALE worked, or restarting vim, but it was still quite strange and a big productivity downgrade.
+
+ ----
+
+ Moving the trim to the initial string and removing it from inside the map reduced the runtime one more microsecond on average lol.
+
+ Also have to try improving the initialization of the `VecDeque` version.
+
+ ## Day 7
+
+Part 1 is simply the median to find the right position + calculate the fuel lol. Have to see if there is any way to make this more efficient, since it's already at 60-70 microseconds. Maybe it's due to the input size, but I doubt it.
+
+For part 2 the median won't work. The average of the example is 4.9, the ideal position being 5. Maybe that works?  
+Darn, it worked for the example but not for the provided input... What could be going wrong?
+
+Supposedly this should be the right solution, and I even checked with a website that my calculation of the average is correct so IDK what's up.
+
+It turns out that for the example input, which has an average of 4.9, the right solution is to round up. However, for my input, that has an average of 489.591, the right solution is to round down. Wat?
+
+Well, [`xRuiAlves`](https://github.com/xRuiAlves) helped me by shedding some light onto the issue: in truth, before trying, we cannot know which would be better. This is due to the fact that the average is not a weighted metric, unlike the median! So, updating the code to try both, which probably means going from a `.map.sum` to a `for` loop (which in my experience has been faster anyway, so that should be fine).
+
+---
+
+Onto optimization:
+* Having 2 separate `.map.sum`s  seems to be either similar or marginally better than having a single loop and accumulating both floor and ceiling count in two separate mutable accumulators.
+* It is more efficient to use `.map.sum` for part 1 than to use a `for` loop and accumulate into a local variable.
+* TODO: There is an O(n) way to implement median. Investigate that, it's probably faster :D
+
+Today's implementation averaged about 64-70 microseconds. It seems a bit high, especially compared with yesterday which performed a lot of iterations on a loop. This is just calculating a median and average, which feels like it should be as hard. Maybe I can implement the improved median algorithm and try to merge operations, such as a sum and length calculation? Length might be optimized by the underlying container, but if the sum is joined with other operations, it may help.
+
