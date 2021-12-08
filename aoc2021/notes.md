@@ -188,3 +188,16 @@ Onto optimization:
 
 Today's implementation averaged about 64-70 microseconds. It seems a bit high, especially compared with yesterday which performed a lot of iterations on a loop. This is just calculating a median and average, which feels like it should be as hard. Maybe I can implement the improved median algorithm and try to merge operations, such as a sum and length calculation? Length might be optimized by the underlying container, but if the sum is joined with other operations, it may help.
 
+## Day 8
+
+The fact that a to g is 7 characters has got me thinking bit masks hmm. Since we could use each character as a bit and then do operations to see what would be missing!
+
+Part 1 was extremely simple, and I see why it was included - if it was not, many people would likely just run from the problem since it seems too complex from the get go. After solving part 1, sunk cost fallacy kicks in, and the drive to solve part 2 increases. I know this was the case for me for sure lol.
+
+Part 2 felt easier when I eventually got started. However, facing some logic issues in implementing the algorithm to determine which digit a bitset corresponded to was a bit frustrating.
+
+Eventually found the mistake: I was considering that `5 | 4` would have only 1 segment unset. While this is true, the same is true for `3 | 4`, causing a bug that made the program enter an infinite loop. Fun times :)
+
+My second mistake (more of a derp, really) was not thoroughly reading the problem statement, and just adding all of the digits in a number instead of "concatenating" them. lol.
+
+In the end, the solution was considerably fast considering how "hammered" it is, with the (possibly infinite) loop to get the correspondence and all, averaging something like 230-250 microseconds. It is still under 1ms, so I am quite happy with it, but I've also identified some potential performance improvements, such as "branching out" on digit-determination possibilities (have more ways to decide on each digit) so that less iterations are required to decide on every digit, or improving the parsing if possible.
