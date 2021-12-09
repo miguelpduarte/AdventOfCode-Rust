@@ -219,6 +219,12 @@ Ok, found the bug when thinking about optimizations. It seems that there were 9s
 
 Part 2 was a bit annoying since I spent clearly too much time thinking about an efficient flood fill algorithm instead of simply implementing it lol. Ended up using the original matrix as a "visited" matrix as well, by adding 10 to it (since I could not invert the signal of the values, due to using `usize`s).
 
-The solution runtime is about 340-380 microseconds, which is still over 1ms :) The runtime fluctuated a bit, probably due to something else running on my laptop at the same time.
+The solution runtime is about 320-350 microseconds, which is still over 1ms :) The runtime fluctuated a bit, probably due to something else running on my laptop at the same time.
 
 I should probably test using a stack instead of doing recursion when building the basin, since that might be more efficient. TODO: test that.
+
+----
+
+Interestingly enough, using a `Vec` as a stack has resulted in similar or slightly worse performance. I've heard that in other programming languages it is faster to use a stack variable, as it avoids creation of additional stackframes, etc. However, it seems that these operations are much more optimized than creation/insertion/allocation of stack-like operations on a `Vec`!
+
+From similar tests, using a `VecDeque` as a queue resulted in similar performance to the `Vec`-as-stack option.

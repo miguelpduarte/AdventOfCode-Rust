@@ -53,6 +53,7 @@ fn solve_day(input: String) -> (usize, usize) {
         let y_end = cmp::max(*y1, *y2);
 
         for i in x_start..=x_end {
+            #[allow(clippy::needless_range_loop)]
             for j in y_start..=y_end {
                 vent_overlap_matrix[j][i] += 1;
             }

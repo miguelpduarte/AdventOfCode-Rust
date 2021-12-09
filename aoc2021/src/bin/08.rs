@@ -64,7 +64,7 @@ fn solve_day(input: String) -> (usize, usize) {
         let signal_patterns: Vec<SignalBitmask> = line_iter
             .next()
             .unwrap()
-            .trim()
+            .trim_end()
             .split(' ')
             .map(parse_to_signalbitmask)
             .collect();
@@ -265,7 +265,7 @@ fn solve_day(input: String) -> (usize, usize) {
 
         let mut line_total = 0;
 
-        for output in outputs.trim().split(' ') {
+        for output in outputs.trim_start().split(' ') {
             match output.len() {
                 // 1 | 4 | 7 | 8
                 2 | 4 | 3 | 7 => {
