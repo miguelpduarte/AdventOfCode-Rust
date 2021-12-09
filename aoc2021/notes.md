@@ -209,3 +209,16 @@ It seems that the "branching out" idea might not be necessary, given that for th
 Changing the parsing to use subtraction + bit-shifts (`1 << (input - b'a')`) instead of the previously-existing match statement seems to have had little to no impact in performance, which goes to show how well optimized `match` is! Nice! I'm even rolling back to the `match` solution since it panics when the input is not within the expected values, which adds safety to the solution.
 
 The next step in testing performance would likely be to experiment with using `HashMap`s, at least in replacement of the `signal_to_value` array, which is quite sparse (255 `usize` elements and only 10 are ever used). It is likely that arrays will win again but nothing like running some benchmarks to be sure! :D TODO
+
+## Day 9
+
+Part 1 seems quite boring, especially since I can't see any trick or different algorithm to make it more efficient. Boring bounds checking into debugging why the result isn't right is also not super fun.  
+That and passing a test with the example, but not getting the right result with my input :/ (1674 is too high)
+
+Ok, found the bug when thinking about optimizations. It seems that there were 9s with neighboring 9s, which resulted in the minimum being 9, and thus my implementation thinking "oh this must be a minimum". But it must be strictly less instead of <=. When thinking about pruning 0 and 9 (0 is always minimum and 9 is never a minimum - not 100% sure about 0 though), saw the result be reduced to about half, which pointed me to this bug, lol.
+
+Part 2 was a bit annoying since I spent clearly too much time thinking about an efficient flood fill algorithm instead of simply implementing it lol. Ended up using the original matrix as a "visited" matrix as well, by adding 10 to it (since I could not invert the signal of the values, due to using `usize`s).
+
+The solution runtime is about 340-380 microseconds, which is still over 1ms :) The runtime fluctuated a bit, probably due to something else running on my laptop at the same time.
+
+I should probably test using a stack instead of doing recursion when building the basin, since that might be more efficient. TODO: test that.
