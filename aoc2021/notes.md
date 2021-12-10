@@ -228,3 +228,14 @@ I should probably test using a stack instead of doing recursion when building th
 Interestingly enough, using a `Vec` as a stack has resulted in similar or slightly worse performance. I've heard that in other programming languages it is faster to use a stack variable, as it avoids creation of additional stackframes, etc. However, it seems that these operations are much more optimized than creation/insertion/allocation of stack-like operations on a `Vec`!
 
 From similar tests, using a `VecDeque` as a queue resulted in similar performance to the `Vec`-as-stack option.
+
+## Day 10
+
+This was much easier than expected, especially judging from the previous days which had "complex" (for my day-to-day experience :sweat_smile:) algorithms. For this, a stack and some comparisons were enough. One function is even sufficient to solve both parts, accumulating either the "corruption score" or the "completion score" for each line.
+
+My implementation was focused on simply coding the solution quickly, and sincerely shouldn't be as performant as it is... But it averages 100-120 microseconds (and my laptop is hot at the moment, so it may even be less), which is quite low considering the spaghetti that is my outer `fold` :grin:
+
+As there seems to be a weird bug every day: Today my weird bug was opting to use `u32` instead of `usize` "just cos'" and having the part 2 values overflow and thus getting smaller values than expected. After double-checking that my logic was correct after several repeated "your answer is too low", I thought I'd try to see if this was the issue by doing a quick `%s/u32/usize/g`. Lo and behold, the part 2 answer was now much higher, and correct!  
+(Funnily enough I had to wait for a 3 minute timeout since I tried several fixes quickly (the element after and before the middle, etc) and managed to lock myself out. After seeing the bug, it was funny to be locked out by my previous attempts, but at least I got it!)
+
+For this day I just did a quick performance check, since I did not see any easy wins, and am a bit tight on time today.
