@@ -238,4 +238,18 @@ My implementation was focused on simply coding the solution quickly, and sincere
 As there seems to be a weird bug every day: Today my weird bug was opting to use `u32` instead of `usize` "just cos'" and having the part 2 values overflow and thus getting smaller values than expected. After double-checking that my logic was correct after several repeated "your answer is too low", I thought I'd try to see if this was the issue by doing a quick `%s/u32/usize/g`. Lo and behold, the part 2 answer was now much higher, and correct!  
 (Funnily enough I had to wait for a 3 minute timeout since I tried several fixes quickly (the element after and before the middle, etc) and managed to lock myself out. After seeing the bug, it was funny to be locked out by my previous attempts, but at least I got it!)
 
-For this day I just did a quick performance check, since I did not see any easy wins, and am a bit tight on time today.
+For this day I just did a quick performance check, since I did not see any easy wins, and am a bit tight on time today. I just compared both methods I used to get the median value - either popping half of the values off of the max heap and reading the next one, or using `.into_sorted_vec` and then getting the middle value. Both have similar performance, strangely.
+
+## Day 12
+
+(I was ooo for a couple days, and as such I'll be playing catchup for a bit. Bear with me as the days' order may get a bit wonky.)
+
+The first part was not overly complex, a recursive approach not being too painful. My biggest issue was forgetting to create the "graph" edges in both directions, as well as starting to consider `.clone`ing the visited set for each recursion, since the set being passed around was always the same, instead of being created for each new invocation (recursion). Thankfully a friend saved me from the spaghetti and efficiency loss that that would entail by reminding me that the recursive calls will resolve one at a time (and not in "parallel" as one sometimes might imagine when considering the algorithm). As such, we can insert into the set, call the function recursively with the updated set, and then remove the elements from the set before returning. This ensures that any changes an invocation of the method does will only propagate to its "children" (the invocations that it creates) instead of also "returning via parameter" to its caller.
+
+It was not very difficulty to adapt y code for the second part. I mostly copy-pasted the "base case" of "I already chose a small cave to visit twice". And then added some logic to handle the detecting of "I can give a second chance to this small cave via this connection" and propagate the changes accordingly.  
+Funny enough, most of the code worked straight away, just leaving an edge case that I later found: forgetting to consider that `start` is lowercase and as such I was handling it as a small cave. After making the necessary changes, my solution output the correct result! Yay!
+
+Sadly, this seems like it is a quite complex task, and the runtime shows: roughly 68-71ms of runtime. For now, this day will join day 5 in the "over 1ms runtime" club.  
+Unfortunately I don't see any obvious improvements for runtime for now. My first idea is to try and switch many of the `&str` for `i32` or similar, to attempt to optimize the accesses via the `HashMap` and `HashSet`, but this is the only idea I have for now.
+
+Strangely enough, I had to use lifetime annotations but did not have a very hard time with them (thankfully! I had heard a lot of bad things about lifetimes and was quite ready to switch to owned strings, but am glad I didn't). I mostly followed the compiler's warnings/suggestions and just added lifetimes to most things. I know that this is an extremely simple case of using lifetimes, but was nonetheless happy to be able to tackle a rust-specific concept quite handily, feelsgoodman :)
