@@ -253,3 +253,11 @@ Sadly, this seems like it is a quite complex task, and the runtime shows: roughl
 Unfortunately I don't see any obvious improvements for runtime for now. My first idea is to try and switch many of the `&str` for `i32` or similar, to attempt to optimize the accesses via the `HashMap` and `HashSet`, but this is the only idea I have for now.
 
 Strangely enough, I had to use lifetime annotations but did not have a very hard time with them (thankfully! I had heard a lot of bad things about lifetimes and was quite ready to switch to owned strings, but am glad I didn't). I mostly followed the compiler's warnings/suggestions and just added lifetimes to most things. I know that this is an extremely simple case of using lifetimes, but was nonetheless happy to be able to tackle a rust-specific concept quite handily, feelsgoodman :)
+
+## Day 11
+
+Went for day 11 first (over 13), since it felt simpler, it was late, and I didn't feel like killing too many braincells thinking about matrix math.
+
+Part 1 was not too complicated, just misread `>9` for `>=9`.
+
+Runtime for both parts is 280-300 microseconds without any optimizations, nice.
