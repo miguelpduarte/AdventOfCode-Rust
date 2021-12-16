@@ -261,3 +261,18 @@ Went for day 11 first (over 13), since it felt simpler, it was late, and I didn'
 Part 1 was not too complicated, just misread `>9` for `>=9`.
 
 Runtime for both parts is 280-300 microseconds without any optimizations, nice.
+
+## Day 14
+
+More complex than expected, especially since I spent way too long trying to find a way to do `itertools::interleave` without using itertools, and nothing I tried would work.
+
+Part 2 was a kick in the teeth since my solution clearly did not scale.
+I had a cool idea for a better solution, but it took a longer time than it should to implement (these last few days have left me with little time and brain power to tackle these problems at the end of the day).
+
+It simply consists of counting the number of pairs, and using that instead of a large string / vec of bytes. We can take a pair and get the two pairs that are generated from it via the rules, and then zero out the original pair and increment the new pairs' count by the count of the original pair.
+
+It seems that the growth falls off from what was expected after the third step, in which the number of pairs should be 24 but is 21. After that, it should be 48 but is 31.
+
+Found the bug, there were two: I was setting count to 0 when I should be subtracting it (and didn't even need that) and counting the number of characters incorrectly.
+
+The current runtime is about 5-7 ms. There are some optimizations I can do, which I might try. Debating between that and catching up on other days.
