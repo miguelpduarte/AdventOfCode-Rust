@@ -276,3 +276,11 @@ It seems that the growth falls off from what was expected after the third step, 
 Found the bug, there were two: I was setting count to 0 when I should be subtracting it (and didn't even need that) and counting the number of characters incorrectly.
 
 The current runtime is about 5-7 ms. There are some optimizations I can do, which I might try. Debating between that and catching up on other days.
+
+## Day 15
+
+Basically Dijkstra. Took inspiration from https://doc.rust-lang.org/std/collections/binary_heap/index.html and hacked together a simple implementation using a "current cost matrix" that also doubles as a visited check. Runtime is far from ideal, at about 49-55ms for both parts. However, given that I solved the first part several days late, and only finished the second part some more days later, having finished it at all is a surprise.
+
+After not keeping up for a couple of days and friends I was competing against also dropping the competition, it has been hard to keep the motivation going. I might try for a few more days, but even that is not guaranteed. The optimization and algorithmic thought was fun and fresh for a bit, but lack of time and interest has made this a bit of a chore. I might start a random project in Rust instead though, which may be more motivating to keep me going.
+
+To optimize this day: probably don't create a full matrix to represent the "current cost matrix". Maybe use a Map? Not sure if that is better. Probably using A\* instead of Dijkstra may also be a good idea, especially since we are working with coordinates, so the values are more obvious. TODO eventually.
