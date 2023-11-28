@@ -1,3 +1,6 @@
+#![feature(test)]
+extern crate test;
+
 use std::collections::BinaryHeap;
 
 fn solve_day(input: String) -> (usize, usize) {

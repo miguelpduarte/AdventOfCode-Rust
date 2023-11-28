@@ -1,3 +1,6 @@
+#![feature(test)]
+extern crate test;
+
 fn solve_day(input: String) -> (usize, usize) {
     let calories_iter = input.split("\n\n").map(|elf_calories_str| {
         elf_calories_str

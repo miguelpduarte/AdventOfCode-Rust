@@ -1,3 +1,6 @@
+#![feature(test)]
+extern crate test;
+
 fn match_score(opponent: u8, me: u8) -> u8 {
     let opp_idx = opponent - b'A';
     let me_idx = me - b'X';

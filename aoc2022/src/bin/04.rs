@@ -1,3 +1,6 @@
+#![feature(test)]
+extern crate test;
+
 fn solve_day(input: String) -> (usize, usize) {
     let p1 = input
         .lines()
