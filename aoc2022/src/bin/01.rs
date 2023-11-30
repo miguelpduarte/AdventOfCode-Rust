@@ -30,6 +30,7 @@ fn solve_day(input: String) -> (usize, usize) {
     (p1, p2)
 }
 
+/*
 fn solve_day_old_simple(input: String) -> (usize, usize) {
     let mut max = 0;
     let mut curr = 0;
@@ -77,6 +78,7 @@ fn solve_day_old_simple(input: String) -> (usize, usize) {
 
     (p1, p2)
 }
+*/
 
 #[test]
 fn example_input() {

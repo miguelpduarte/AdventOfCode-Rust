@@ -16,7 +16,7 @@ fn solve_day(input: String) -> (usize, usize) {
         .map(|pair| {
             let first = &pair[0];
             let second = &pair[1];
-            return fully_contains(first, second);
+            fully_contains(first, second)
         })
         .filter(|&x| x)
         .count();
