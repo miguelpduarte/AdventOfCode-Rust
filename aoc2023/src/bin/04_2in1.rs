@@ -4,20 +4,10 @@ use std::collections::{HashMap, HashSet};
 
 extern crate test;
 
+// Cut time in half by computing both parts in 1 loop (kind of expected result tbh)
+
 fn solve_day(input: String) -> (usize, usize) {
-    let p1 = input
-        .lines()
-        .map(|line| {
-            let matches = line_to_card_matches(line);
-
-            if matches == 0 {
-                0
-            } else {
-                2_usize.pow((matches - 1).try_into().unwrap())
-            }
-        })
-        .sum();
-
+    let mut p1_points = 0;
     let mut n_cards = 0;
     let mut card_copies: HashMap<usize, usize> = HashMap::new();
 
@@ -25,6 +15,11 @@ fn solve_day(input: String) -> (usize, usize) {
         let card_id = i + 1;
 
         let matches = line_to_card_matches(line);
+
+        if matches > 0 {
+            p1_points += 2_usize.pow((matches - 1).try_into().unwrap());
+        }
+
         // Multiply matches by how many copies of this card we have
         // (Performance note: I tested both using .get and .remove and it seems that .remove was either the same or slower, consistently)
         // (I'm guessing that the cost of adding the remove operation is higher than just growing the map (it's roughly 200 entries of usizes, so not too much I guess))
@@ -44,6 +39,7 @@ fn solve_day(input: String) -> (usize, usize) {
         }
     }
 
+    let p1 = p1_points;
     let p2 = n_cards;
 
     (p1, p2)
