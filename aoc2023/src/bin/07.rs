@@ -145,7 +145,7 @@ fn solve_day(input: String) -> (usize, usize) {
 
     // println!("pre-sort: {:?}", hands);
 
-    hands.sort_by(|a, b| {
+    hands.sort_unstable_by(|a, b| {
         if a.hand_type != b.hand_type {
             return a.hand_type.cmp(&b.hand_type);
         }
@@ -231,7 +231,7 @@ fn solve_day(input: String) -> (usize, usize) {
 
     // println!("pre-sort: {:?}", hands);
 
-    hands_p2.sort_by(|a, b| {
+    hands_p2.sort_unstable_by(|a, b| {
         if a.hand_type != b.hand_type {
             return a.hand_type.cmp(&b.hand_type);
         }
