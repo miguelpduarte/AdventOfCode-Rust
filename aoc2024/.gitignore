@@ -1,0 +1,6 @@
+/target
+.session
+# Apparently we are asked to not share these
+inputs/
+# But we need the folder structure still
+!inputs/.keep
