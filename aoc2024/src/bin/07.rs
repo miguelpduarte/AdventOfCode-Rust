@@ -21,7 +21,24 @@ fn solve_day(input: String) -> (usize, usize) {
         .map(|eq| eq.value)
         .sum();
 
-    let p2 = 0;
+    let p2 = input
+        .lines()
+        .map(|line| {
+            let (value, nums) = line.split_once(": ").unwrap();
+            let value = value.parse().unwrap();
+            let nums = nums
+                .split(' ')
+                .map(|item| item.parse::<usize>().unwrap())
+                .collect::<Vec<_>>();
+
+            Equation {
+                value,
+                numbers: nums,
+            }
+        })
+        .filter(is_equation_possible_p2)
+        .map(|eq| eq.value)
+        .sum();
 
     (p1, p2)
 }
@@ -29,6 +46,69 @@ fn solve_day(input: String) -> (usize, usize) {
 struct Equation {
     value: usize,
     numbers: Vec<usize>,
+}
+
+/// Determines if it is possible to do unconcatenator || something, and get to `value`.
+/// Some(something) if so, None otherwise.
+fn can_unconcatenate(value: usize, unconcatenator: usize) -> Option<usize> {
+    if unconcatenator > value {
+        return None;
+    }
+
+    // TODO: What would be the expected outcome if value == unconcatenator?
+    // This would be a termination case for the loop in the caller.
+    // I guess that since it also works for a subtraction, we don't need to worry about it.
+
+    let num_digits = unconcatenator.checked_ilog10().unwrap_or(0) + 1;
+
+    // Check if the last `num_digits` digits of value are the same as unconcatenator
+    let digit_mask = 10usize.pow(num_digits);
+    if value % digit_mask == unconcatenator {
+        // If so, "remove" then and shift the number. That is our `something`.
+        Some(value / digit_mask)
+    } else {
+        None
+    }
+}
+
+// Largely copied from p1, so trimming the comments for readability
+fn is_equation_possible_p2(eq: &Equation) -> bool {
+    let mut reversed_nums = eq.numbers.clone();
+    reversed_nums.reverse();
+
+    let mut targets = vec![eq.value];
+
+    for num in reversed_nums {
+        let mut new_targets = Vec::with_capacity(targets.len());
+
+        for target in targets {
+            if target == 0 {
+                continue;
+            }
+
+            if num > target {
+                continue;
+            }
+
+            // We can always subtract
+            new_targets.push(target - num);
+
+            // We can only divide if there is no remainder
+            if target.rem_euclid(num) == 0 {
+                new_targets.push(target / num);
+            }
+
+            // We might be able to "unconcatenate"
+            if let Some(post_unconcatenation) = can_unconcatenate(target, num) {
+                new_targets.push(post_unconcatenation);
+            }
+        }
+
+        targets = new_targets;
+    }
+
+    // As said above, if any path reached 0, the eq is possible:
+    targets.iter().any(|&x| x == 0)
 }
 
 fn is_equation_possible(eq: &Equation) -> bool {
@@ -78,6 +158,7 @@ fn is_equation_possible(eq: &Equation) -> bool {
 
             // We can only divide if there is no remainder
             // (as otherwise we immediately know that this path was not taken)
+            // TODO: Check out `usize::is_multiple_of`
             if target.rem_euclid(num) == 0 {
                 new_targets.push(target / num);
             }
@@ -104,7 +185,7 @@ fn example_input() {
         .to_owned();
     let res = solve_day(input);
     assert_eq!(res.0, 3749);
-    // assert_eq!(res.1, 4);
+    assert_eq!(res.1, 11387);
 }
 
 #[test]
