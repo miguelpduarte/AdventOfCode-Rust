@@ -32,52 +32,62 @@ struct Equation {
 }
 
 fn is_equation_possible(eq: &Equation) -> bool {
+    // Going over the numbers in reverse because then we can know if multiplication was used,
+    // by checking if the current number is a divisor of the "accumulator".
     let mut reversed_nums = eq.numbers.clone();
     reversed_nums.reverse();
 
-    let mut target = eq.value;
+    // TODO: I guess there could be an optimization where we would be swapping around the lists and
+    // clearing them, just to keep the allocated memory.
+    // Looking at the input, the equations are not that long so this should be ok for now.
+    let mut targets = vec![eq.value];
 
-    // Greedy approach, trying to reach as close as possible, as fast as possible:
-    // - If number is not divisible we can only use addition
-    // - Target is to use addition (subtraction) and get target to 0
+    // Dynamic Programming (I think) approach:
+    // If we cannot divide, subtracting is the only option - already done before in greedy
+    // If we can divide, we can also subtract. To not overshoot, we need to consider both options.
+    // As such, when we have that case, we add 2 options: one if we add/subtract, another one for
+    // div/mult.
+    // Whenever we hit an underflow (subtracting would put us over target), we know that this
+    // option is not possible, so we can remove this item from the targets list.
+    //
+    // Then, at the end, we just need to have at least one item in targets to have reached 0.
+
     for num in reversed_nums {
-        if target == 0 {
-            // We have overshot. This might be an issue with our algo being greedy though.
-            // So we are printing for debugging...
-            println!("overshot");
-            return false;
-        }
-        if target == num {
-            // This means that by subtracting we have reached our goal!
-            // However, we do not know if this is the last item. So we just set target to 0
-            target = 0;
-            continue;
-        }
+        // The vector is likely to have a similar size, might be smaller due to trimming impossible
+        // paths, or bigger if there's a lot of branching, but this should be a decent baseline
+        // case for now.
+        let mut new_targets = Vec::with_capacity(targets.len());
 
-        // TODO: Handle overflow (?)
+        for target in targets {
+            if target == 0 {
+                // We already reached 0 but we still have `num`s to go.
+                // This means we overshot, so this path is impossible.
+                continue;
+            }
 
-        if target.rem_euclid(num) == 0 {
-            // Target is currently divisible by our number.
-            // Since we are being greedy, we take this as the "fastest approach" operation.
-            target /= num;
-        } else {
-            // If we can't divide cleanly, this means that this number should just be added (so
-            // subtracted since we are going in reverse)
-            // Check for overflow, because this also means we have overshot and thus this current
-            // solution will not work.
-            if let Some(new_target) = target.checked_sub(num) {
-                target = new_target;
-            } else {
-                // Overflow, we overshot
-                println!("overshot overflow");
-                return false;
+            if num > target {
+                // We overshot, so this path is impossible, don't add to new_targets.
+                // Not counting == as that would just mean a full match which might be ok if this
+                // is the last element.
+                continue;
+            }
+
+            // We can always subtract
+            // Since we checked for over/underflow cases above, this is safe.
+            new_targets.push(target - num);
+
+            // We can only divide if there is no remainder
+            // (as otherwise we immediately know that this path was not taken)
+            if target.rem_euclid(num) == 0 {
+                new_targets.push(target / num);
             }
         }
+
+        targets = new_targets;
     }
 
-    // If we have reached the number, the eq is possible, so check if target is 0 (means exact
-    // value was reached)
-    target == 0
+    // As said above, if any path reached 0, the eq is possible:
+    targets.iter().any(|&x| x == 0)
 }
 
 #[test]
@@ -103,9 +113,10 @@ fn prod_solution() {
 
     let input = read_to_string(format!("inputs/{}", "7.in")).unwrap();
     let res = solve_day(input);
-    // 4701839220390 is too low
+    // 4701839220390 is too low - greedy option
     // This means that our greedy approach is failing some eqs that should otherwise be possible...
-    assert_eq!(res.0, 42);
+    // Success on the second impl!
+    assert_eq!(res.0, 4998764814652);
     assert_eq!(res.1, 42);
 }
 
