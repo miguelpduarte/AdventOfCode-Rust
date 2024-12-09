@@ -41,17 +41,17 @@ fn solve_day(input: String) -> (usize, usize) {
         }
     }
 
-    println!("{:?}", towers_by_type);
+    // println!("{:?}", towers_by_type);
 
-    let n_towers: usize = towers_by_type.values().map(|towers| towers.len()).sum();
-    println!("n towers: {}", n_towers);
+    // let n_towers: usize = towers_by_type.values().map(|towers| towers.len()).sum();
+    // println!("n towers: {}", n_towers);
 
     let antinodes: HashSet<AntiNode> = calculate_antinodes(&towers_by_type, width, height);
 
-    let _: Vec<_> = antinodes
-        .iter()
-        .inspect(|an| println!("{:?}", an))
-        .collect();
+    // let _: Vec<_> = antinodes
+    //     .iter()
+    //     .inspect(|an| println!("{:?}", an))
+    //     .collect();
 
     let p1 = antinodes.len();
 
@@ -99,15 +99,15 @@ fn calculate_antinode_bounded(
     // Always use the same direction (our to their) because we are doing all possible combinations,
     // so we will cover the reverse case already.
 
+    // x = ours.x + dif * 2 <>
     // x = ours.x + (theirs.x - ours.x) * 2
     // <> 2*theirs.x - ours.x (aka theirs.x + dif)
     let x = (2 * theirs.x).checked_sub(ours.x)?;
     let y = (2 * theirs.y).checked_sub(ours.y)?;
 
-    println!("Trying {},{}", x, y);
-
     // checked_sub handles left and top bound, but the others have to be checked manually:
-    if x > width || y > height {
+    // (This needs to be inclusive since our bounds are [0, width[, we only go up to width-1)
+    if x >= width || y >= height {
         return None;
     }
 
@@ -131,7 +131,7 @@ fn example_input() {
         .to_owned();
     let res = solve_day(input);
     assert_eq!(res.0, 14);
-    // assert_eq!(res.1, 11387);
+    assert_eq!(res.1, 34);
 }
 
 #[test]
@@ -196,13 +196,28 @@ N...."
 }
 
 #[test]
+fn manual_oob_right_and_bottom() {
+    let input = "....
+..aa
+...b
+...b"
+        .to_owned();
+    let res = solve_day(input);
+    assert_eq!(res.0, 2);
+    // assert_eq!(res.1, 11387);
+}
+
+#[test]
 fn prod_solution() {
     use std::fs::read_to_string;
 
     let input = read_to_string(format!("inputs/{}", "8.in")).unwrap();
     let res = solve_day(input);
     // 366 is too high
-    assert_eq!(res.0, 42);
+    // 96 is "not right" - after diff calc change. (the diff calc was just straight up wrong lol)
+    // New method and old got the same outcome, but the bounds check was what was wrong...
+    // Added "manual_oob_right_and_bottom" to test for this...
+    assert_eq!(res.0, 361);
     assert_eq!(res.1, 42);
 }
 
