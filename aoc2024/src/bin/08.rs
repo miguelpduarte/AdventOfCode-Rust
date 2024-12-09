@@ -55,9 +55,40 @@ fn solve_day(input: String) -> (usize, usize) {
 
     let p1 = antinodes.len();
 
-    let p2 = 0;
+    let harmonic_antinodes: HashSet<AntiNode> =
+        calculate_harmonic_antinodes(&towers_by_type, width, height);
+
+    let p2 = harmonic_antinodes.len();
 
     (p1, p2)
+}
+
+fn calculate_harmonic_antinodes(
+    towers: &HashMap<char, Vec<Tower>>,
+    width: usize,
+    height: usize,
+) -> HashSet<AntiNode> {
+    let mut antinodes = HashSet::new();
+
+    for towers in towers.values() {
+        // For each tower, compute all possible antinodes by matching with all towers (other than
+        // itself)
+
+        for our_tower in towers {
+            for their_tower in towers {
+                if our_tower == their_tower {
+                    continue;
+                }
+
+                let new_antinodes =
+                    calculate_harmonic_antinodes_bounded(our_tower, their_tower, width, height);
+
+                antinodes.extend(new_antinodes);
+            }
+        }
+    }
+
+    antinodes
 }
 
 fn calculate_antinodes(
@@ -78,7 +109,7 @@ fn calculate_antinodes(
                 }
 
                 if let Some(antinode) =
-                    calculate_antinode_bounded(our_tower, their_tower, width, height)
+                    calculate_antinode_bounded(our_tower, their_tower, width, height, 2)
                 {
                     antinodes.insert(antinode);
                 }
@@ -89,11 +120,37 @@ fn calculate_antinodes(
     antinodes
 }
 
+fn calculate_harmonic_antinodes_bounded(
+    ours: &Tower,
+    theirs: &Tower,
+    width: usize,
+    height: usize,
+) -> Vec<AntiNode> {
+    // Loop the "distance_scale", stopping when we find an item out of bounds
+    // While something is in-bounds, we keep going.
+
+    let mut antinodes = vec![];
+
+    for distance_scale in 1.. {
+        let Some(antinode) =
+            calculate_antinode_bounded(ours, theirs, width, height, distance_scale)
+        else {
+            // OOB, we're done
+            break;
+        };
+
+        antinodes.push(antinode);
+    }
+
+    antinodes
+}
+
 fn calculate_antinode_bounded(
     ours: &Tower,
     theirs: &Tower,
     width: usize,
     height: usize,
+    distance_scale: usize,
 ) -> Option<AntiNode> {
     // Calculate the vector between our_tower and their_tower and double it.
     // Always use the same direction (our to their) because we are doing all possible combinations,
@@ -102,8 +159,11 @@ fn calculate_antinode_bounded(
     // x = ours.x + dif * 2 <>
     // x = ours.x + (theirs.x - ours.x) * 2
     // <> 2*theirs.x - ours.x (aka theirs.x + dif)
-    let x = (2 * theirs.x).checked_sub(ours.x)?;
-    let y = (2 * theirs.y).checked_sub(ours.y)?;
+    // Maybe in the end this equation optimization was not the best,
+    // because the distance_scale - 1 is not super obvious / intuitive.
+    // "Safety": This is safe, because distance_scale is guaranteed to be at least 1.
+    let x = (distance_scale * theirs.x).checked_sub((distance_scale - 1) * ours.x)?;
+    let y = (distance_scale * theirs.y).checked_sub((distance_scale - 1) * ours.y)?;
 
     // checked_sub handles left and top bound, but the others have to be checked manually:
     // (This needs to be inclusive since our bounds are [0, width[, we only go up to width-1)
@@ -132,6 +192,24 @@ fn example_input() {
     let res = solve_day(input);
     assert_eq!(res.0, 14);
     assert_eq!(res.1, 34);
+}
+
+#[test]
+fn p2_specific_smallish_example_input() {
+    let input = "T.........
+...T......
+.T........
+..........
+..........
+..........
+..........
+..........
+..........
+.........."
+        .to_owned();
+    let res = solve_day(input);
+    // assert_eq!(res.0, 14);
+    assert_eq!(res.1, 9);
 }
 
 #[test]
@@ -218,7 +296,7 @@ fn prod_solution() {
     // New method and old got the same outcome, but the bounds check was what was wrong...
     // Added "manual_oob_right_and_bottom" to test for this...
     assert_eq!(res.0, 361);
-    assert_eq!(res.1, 42);
+    assert_eq!(res.1, 1249);
 }
 
 aoc2024::day_main!("8.in");
