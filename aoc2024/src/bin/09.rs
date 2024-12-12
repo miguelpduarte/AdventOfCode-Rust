@@ -169,6 +169,32 @@ fn compact_disk_cool(disk: &mut Vec<DiskItem>) {
             continue;
         }
 
+        println!("{} {:?}", left_idx, left_item);
+        println!("{:?}", disk);
+
+        // Condense "fragmented" free space that we might have due to previous file moves:
+        if left_idx < disk.len() - 2 {
+            println!("Trying to condense at {} {}", left_idx, left_idx + 1);
+            // If we have contiguous free space, merge it.
+            if let (DiskItem::Free(free1), DiskItem::Free(free2)) =
+                (&disk[left_idx], &disk[left_idx + 1])
+            {
+                println!(
+                    "Merging {}:{:?}, {}:{:?}",
+                    left_idx,
+                    disk[left_idx],
+                    left_idx + 1,
+                    disk[left_idx + 1]
+                );
+
+                // Merge all the free space into the first element, and remove the second one
+                disk[left_idx] = DiskItem::Free(free1 + free2);
+                disk.remove(left_idx + 1);
+                // Since we removed an item, right_bound needs to be lowered:
+                right_bound -= 1;
+            }
+        }
+
         // Let's try all files from right_bound until left_idx+1, stopping if we get a transfer.
         // Optimization: If we transfer the first file that we found, all space to the right is
         // free and we no longer need to search there, reducing right_bound and our search space.        let mut encountered_free = false;
@@ -180,12 +206,12 @@ fn compact_disk_cool(disk: &mut Vec<DiskItem>) {
             // We managed to copy a whole file!
             // If this was the first file we encountered when searching from the right, we no
             // longer need to search to the right of that file!
-            if !pending_files_to_the_right {
-                // Since the copied file's original index is now a Free space, we can even save 1
-                // more step by shifting it by 1. (FIXME: Potentially dangerous, check here first for
-                // bugs)
-                right_bound = copied_file_original_idx - 1;
-            }
+            // if !pending_files_to_the_right {
+            //     // Since the copied file's original index is now a Free space, we can even save 1
+            //     // more step by shifting it by 1. (FIXME: Potentially dangerous, check here first for
+            //     // bugs)
+            //     right_bound = copied_file_original_idx - 1;
+            // }
         }
         // Regardless of success or failure, we move along since we already tried all options.
         left_idx += 1;
@@ -206,6 +232,19 @@ fn try_copy_whole_file(
 ) -> Option<WholeFileCopy> {
     let left_item = &disk[left_idx];
     let mut pending_files_to_the_right = false;
+
+    // Comment on below: Actually this was not a bug. As the unoptimized solution got the same
+    // answer.
+    // The real bug is: If we create a bunch of smaller free-spaces due to moving stuff around,
+    // we need to merge them together. So that Free(1) Free(1) Free(1) wouldn't fit 3, while it
+    // actually should.
+    //
+    // /// IMPORTANT: Figured out the bug!
+    // /// We should go in order of decreasing file ID number. With specific setups, we might get
+    // /// the wrong one if we just always grab the last one, but the example input does not cover
+    // /// for this.
+    let mut highest_file_id_and_index: Option<(usize, usize)> = None;
+
     // Since Rust's ranges must be increasing, we create it like so and reverse it to get the
     // desired effect of going from right bound down to left_idx.
     // Since the lower bound is inclusive and upper is exclusive, we need to hack it a bit, sadly,
@@ -217,11 +256,11 @@ fn try_copy_whole_file(
             continue;
         }
 
-        // println!("Trying {}->{:?} {:?}", left_idx, left_item, right_item);
+        // // println!("Trying {}->{:?} {:?}", left_idx, left_item, right_item);
 
-        // We are now at a file, attempt to copy over *only if it fits*.
-        match (left_item.clone(), right_item.clone()) {
-            (DiskItem::Free(free_size), DiskItem::File { id: _, size }) => {
+        // We are now at a file, mark it for copying *only if it fits*
+        match (left_item, right_item) {
+            (DiskItem::Free(free_size), DiskItem::File { id, size }) => {
                 if size > free_size {
                     // File is too big, skip it
                     // Mark that there is a pending file to the right, so it's not ignored in
@@ -231,37 +270,55 @@ fn try_copy_whole_file(
                 }
 
                 // The file fits!
-                // Thus, move the file into place.
-                disk.swap(right_idx, left_idx);
-
-                if free_size > size {
-                    // There is still free space remaining.
-                    // Correctly update the size of the right side's "newly freed space" as it may
-                    // be between files and affect future compacting.
-                    disk[right_idx] = DiskItem::Free(size);
-                    // Also, add a new smaller Free, with its new size being the leftover free space.
-                    // Insert the new free space in left_idx+1, as left_idx is where the newly
-                    // moved file is.
-                    disk.insert(left_idx + 1, DiskItem::Free(free_size - size));
-
-                    // Due to the indexes shift, we have to return the idx + 1
-                    return Some(WholeFileCopy {
-                        copied_file_original_idx: right_idx + 1,
-                        pending_files_to_the_right,
-                    });
+                // Check if it's the highest, setting if so!
+                if let Some((highest_file_id, _index)) = highest_file_id_and_index {
+                    if *id > highest_file_id {
+                        highest_file_id_and_index = Some((*id, right_idx));
+                    }
+                } else {
+                    highest_file_id_and_index = Some((*id, right_idx));
                 }
-
-                // Perfect fit with no index shift!
-                return Some(WholeFileCopy {
-                    copied_file_original_idx: right_idx,
-                    pending_files_to_the_right,
-                });
             }
             _ => unreachable!(),
         }
     }
 
-    None
+    // We have now found a file which fits, or we return None as there was no move for this free
+    // space:
+    let (_file_id_to_move, file_index_to_move) = highest_file_id_and_index?;
+
+    let right_item = &disk[file_index_to_move];
+
+    match (left_item.clone(), right_item.clone()) {
+        (DiskItem::Free(free_size), DiskItem::File { id: _, size }) => {
+            // Thus, move the file into place.
+            disk.swap(file_index_to_move, left_idx);
+
+            if free_size > size {
+                // There is still free space remaining.
+                // Correctly update the size of the right side's "newly freed space" as it may
+                // be between files and affect future compacting.
+                disk[file_index_to_move] = DiskItem::Free(size);
+                // Also, add a new smaller Free, with its new size being the leftover free space.
+                // Insert the new free space in left_idx+1, as left_idx is where the newly
+                // moved file is.
+                disk.insert(left_idx + 1, DiskItem::Free(free_size - size));
+
+                // Due to the indexes shift, we have to return the idx + 1
+                return Some(WholeFileCopy {
+                    copied_file_original_idx: file_index_to_move + 1,
+                    pending_files_to_the_right,
+                });
+            }
+
+            // Perfect fit with no index shift!
+            Some(WholeFileCopy {
+                copied_file_original_idx: file_index_to_move,
+                pending_files_to_the_right,
+            })
+        }
+        _ => unreachable!(),
+    }
 }
 
 fn checksum_full(disk: &[DiskItem]) -> usize {
@@ -330,6 +387,9 @@ fn prod_solution() {
     assert_eq!(res.0, 6432869891895);
     // 6557710953246 is too high!!
     // With the unoptimized version I got 6472326329261 which is still also too high.
+    // 6538975976890
+    // 6472326329261
+    // 6462112749117 after "fixing" condensing the empty space
     assert_eq!(res.1, 42);
 }
 
