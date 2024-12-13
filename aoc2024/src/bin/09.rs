@@ -70,38 +70,43 @@ fn compact_disk_fragmented(disk: &mut Vec<DiskItem>) {
         // Left side is free space, right side is a file
         // So, just copy over, keeping in mind the different sizes.
 
-        if size == free_size {
-            // File fits perfectly in the free space, just swap the items around
-            disk.swap(left_idx, right_idx);
-            // Save one iteration since right is now done and left is used.
-            right_idx -= 1;
-            left_idx += 1;
-        } else if size > free_size {
-            // Only part of the file was moved, as it did not totally fit in the free space.
-            // Move over the partly copied file
-            disk[left_idx] = DiskItem::File {
-                id,
-                size: free_size,
-            };
-            // Deplete the copied contents on the right side.
-            disk[right_idx] = DiskItem::File {
-                id,
-                size: size - free_size,
-            };
-            // Since left_idx is now over a file, let's save one iteration.
-            left_idx += 1;
-            // We don't move right_idx as we still want to finish moving that file, if we can.
-        } else {
-            // The last option is that we had leftover free space.
-            // In that case, we can still just swap items around since we did a complete copy of
-            // the file, and then add the partially depleted free item as our next item to check.
-            // (And also the free space being wrong on the right side doesn't matter for p1 since
-            // we compact piece by piece).
-            disk.swap(left_idx, right_idx);
-            disk.insert(left_idx + 1, DiskItem::Free(free_size - size));
-            // Since we inserted an item, we don't need to shift right_idx downwards.
-            // We can save an iteration by moving to the new free item, though:
-            left_idx += 1;
+        // This used to be a bunch of if/elseif/else but clippy::comparison_chain.
+        match size.cmp(&free_size) {
+            std::cmp::Ordering::Equal => {
+                // File fits perfectly in the free space, just swap the items around
+                disk.swap(left_idx, right_idx);
+                // Save one iteration since right is now done and left is used.
+                right_idx -= 1;
+                left_idx += 1;
+            }
+            std::cmp::Ordering::Greater => {
+                // Only part of the file was moved, as it did not totally fit in the free space.
+                // Move over the partly copied file
+                disk[left_idx] = DiskItem::File {
+                    id,
+                    size: free_size,
+                };
+                // Deplete the copied contents on the right side.
+                disk[right_idx] = DiskItem::File {
+                    id,
+                    size: size - free_size,
+                };
+                // Since left_idx is now over a file, let's save one iteration.
+                left_idx += 1;
+                // We don't move right_idx as we still want to finish moving that file, if we can.
+            }
+            std::cmp::Ordering::Less => {
+                // The last option is that we had leftover free space.
+                // In that case, we can still just swap items around since we did a complete copy of
+                // the file, and then add the partially depleted free item as our next item to check.
+                // (And also the free space being wrong on the right side doesn't matter for p1 since
+                // we compact piece by piece).
+                disk.swap(left_idx, right_idx);
+                disk.insert(left_idx + 1, DiskItem::Free(free_size - size));
+                // Since we inserted an item, we don't need to shift right_idx downwards.
+                // We can save an iteration by moving to the new free item, though:
+                left_idx += 1;
+            }
         }
     }
 
