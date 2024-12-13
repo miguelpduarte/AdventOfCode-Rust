@@ -65,13 +65,16 @@ fn blink(stones: &HashMap<usize, usize>, output: &mut HashMap<usize, usize>) {
     // 2. Output all the changes into a list, and only "commit" them later, all in one go.
     //
     // Option 2 made things slower, so trying out option 1.
+    // Conclusion: roughly same runtime as original solution that always created a new hashmap from
+    // the previous one. Marginally slower even, but in a very low scale so it could just be a
+    // measurement error. Rust is very efficient at optimizing this, it seems.
+    // So, NOTE: This is not the fastest solution out of the ones I've implemented, ironically.
+    // The first non-naive solution is.
 
     // We clear the map: keeps allocated memory, but not the intermediate values which might have
     // been wrong.
-    // TODO: Determine if actually we can keep the values but just overwrite them.
-    // If we conclude that there is only one way to get to a value (probably needs more math than I
-    // know how to do) we can do that. And instead of doing += count we just set it.
-    // (Better than doing math it will just be to try it out lol)
+    // Update: Tried just setting the values and never clearing the map, and the result was wrong.
+    // So experimentation seems to show that that optimization is not possible :)
     output.clear();
 
     for (value, count) in stones {
