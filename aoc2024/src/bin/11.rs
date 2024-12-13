@@ -1,58 +1,65 @@
 #![feature(test)]
+
+use std::collections::HashMap;
 extern crate test;
 
 fn solve_day(input: String) -> (usize, usize) {
-    let mut stones: Vec<usize> = input
+    // Maps <stone_value, stone_count>
+    let mut stones_frequency: HashMap<usize, usize> = HashMap::new();
+
+    for stone_value in input
         .trim_end()
         .split(' ')
         .map(|item| item.parse::<usize>().unwrap())
-        .collect();
+    {
+        *stones_frequency.entry(stone_value).or_default() += 1;
+    }
 
-    // println!("start: {:?}", stones);
+    // println!("start: {:?}", stones_frequency);
 
     for _i in 0..25 {
-        blink(&mut stones);
-        // println!("{_i}: {:?}", stones);
+        stones_frequency = blink(stones_frequency);
+        // println!("{_i}: {:?}", stones_frequency);
     }
 
-    let p1 = stones.len();
+    let p1 = stones_frequency.values().sum();
 
-    // Here is for sure where it gets crazy - no example answer as well, but I guess all rule
-    // edge-cases are already checked before
     for _i in 0..50 {
-        blink(&mut stones);
+        stones_frequency = blink(stones_frequency);
     }
 
-    let p2 = stones.len();
+    let p2 = stones_frequency.values().sum();
 
     (p1, p2)
 }
 
-fn blink(stones: &mut Vec<usize>) {
-    let mut i = 0;
-    // We need a while with a manual i since we are doing some insertions...
-    while i < stones.len() {
-        let stone = stones[i];
+fn blink(stones: HashMap<usize, usize>) -> HashMap<usize, usize> {
+    // Honestly it's probably just easier to always make a new HashMap, so that we don't have to
+    // worry with mid-loop changing values and stuff.
+
+    let mut new_stones: HashMap<usize, usize> = HashMap::with_capacity(stones.len());
+
+    for (value, count) in stones {
         // Rule 1: 0->1
-        if stone == 0 {
-            stones[i] = 1;
-            i += 1;
+        if value == 0 {
+            *new_stones.entry(1).or_default() += count;
             continue;
         }
 
         // Rule 2: even digits = split off
-        if let Some((stone1, stone2)) = split_if_even_digits(stone) {
-            stones[i] = stone1;
-            stones.insert(i + 1, stone2);
-            // Since insertion shifted indexes, we move past the two new stones.
-            i += 2;
+        // This means that we will have count stones with each of the values
+        if let Some((stone1_value, stone2_value)) = split_if_even_digits(value) {
+            *new_stones.entry(stone1_value).or_default() += count;
+            *new_stones.entry(stone2_value).or_default() += count;
+
             continue;
         }
 
         // Rule 3: value*2024
-        stones[i] *= 2024;
-        i += 1;
+        *new_stones.entry(value * 2024).or_default() += count;
     }
+
+    new_stones
 }
 
 fn split_if_even_digits(n: usize) -> Option<(usize, usize)> {
