@@ -55,91 +55,53 @@ fn compact_disk_fragmented(disk: &mut Vec<DiskItem>) {
         // example don't so let's ignore it for now.
         // Maybe related: Same but for start? However, this would work no problem.
 
-        let left_item = &disk[left_idx];
-
-        // If we are not over free space on our left side, move up to it.
-        if !matches!(left_item, DiskItem::Free(_)) {
+        let DiskItem::Free(free_size) = disk[left_idx] else {
+            // If we are not over free space on our left side, move up to it.
             left_idx += 1;
             continue;
-        }
-
-        let right_item = &disk[right_idx];
+        };
 
         // Left side is now free space, right should be a file.
-        if !matches!(right_item, DiskItem::File { id: _, size: _ }) {
+        let DiskItem::File { id, size } = disk[right_idx] else {
             right_idx -= 1;
             continue;
-        }
+        };
 
-        // Left side is free, right side is a file, so just copy over, counting the sizes.
-        // We should move the smallest amount between the free space and file size.
+        // Left side is free space, right side is a file
+        // So, just copy over, keeping in mind the different sizes.
 
-        // Match is just to correctly unwrap the types... There's probably a more elegant solution
-        // since we have guarantees above.
-        // I'm sorry for the clone. TODO: Remove clone? Didn't make sense to fight it for now
-        match (left_item.clone(), right_item.clone()) {
-            (DiskItem::Free(free_size), DiskItem::File { id, size }) => {
-                let shift_amount = free_size.min(size);
-                // println!(
-                //     "at {},{}: ({:?},{:?}) - spending {}",
-                //     left_idx, right_idx, left_item, right_item, shift_amount
-                // );
-
-                let copied_file_maybe_part = DiskItem::File {
-                    id,
-                    size: shift_amount,
-                };
-
-                // We should always add the new field over where the free space was, unless the
-                // free space still exists.
-                if shift_amount == free_size {
-                    // println!("left free fully spent");
-                    // We have fully consumed the free space, replace it with the new file
-                    disk[left_idx] = copied_file_maybe_part;
-                    // We don't need to move our cursor since the next iteration will do that for
-                    // us.
-                } else {
-                    // println!(
-                    //     "left free partially spent, remainder:{}",
-                    //     free_size - shift_amount
-                    // );
-                    // The free space was only partially exhausted.
-                    // We need to add a new file to the left of the free space, and decrement it
-                    // accordingly.
-                    // We decrement first, to do it before the shift
-                    let new_free = DiskItem::Free(free_size - shift_amount);
-                    disk[left_idx] = new_free;
-
-                    disk.insert(left_idx, copied_file_maybe_part);
-                    // after .insert, we now have: [new_item, remaining_free_space]
-                    // Let's save one iteration by putting our cursor back where it was:
-                    left_idx += 1;
-                    // Since we shifted all items, put the right index where it was:
-                    right_idx += 1;
-                }
-
-                // Regardless of what happened on the left, we have to also decrement the right
-                // side.
-                if shift_amount == size {
-                    // println!("full copy");
-                    // File totally exhausted, mark it as free and continue
-                    // This is necessary for the later checksum calculation, otherwise we'd have
-                    // too many values.
-                    // I think the value shouldn't matter, though. But just in case (maybe prep
-                    // part2?) we do what we should.
-                    disk[right_idx] = DiskItem::Free(shift_amount);
-                    // Save one iteration by shifting
-                    right_idx -= 1;
-                } else {
-                    // println!("partial copy: {}", size - shift_amount);
-                    // If we only partially spent the file, "spend" it
-                    disk[right_idx] = DiskItem::File {
-                        id,
-                        size: size - shift_amount,
-                    };
-                }
-            }
-            _ => unreachable!(),
+        if size == free_size {
+            // File fits perfectly in the free space, just swap the items around
+            disk.swap(left_idx, right_idx);
+            // Save one iteration since right is now done and left is used.
+            right_idx -= 1;
+            left_idx += 1;
+        } else if size > free_size {
+            // Only part of the file was moved, as it did not totally fit in the free space.
+            // Move over the partly copied file
+            disk[left_idx] = DiskItem::File {
+                id,
+                size: free_size,
+            };
+            // Deplete the copied contents on the right side.
+            disk[right_idx] = DiskItem::File {
+                id,
+                size: size - free_size,
+            };
+            // Since left_idx is now over a file, let's save one iteration.
+            left_idx += 1;
+            // We don't move right_idx as we still want to finish moving that file, if we can.
+        } else {
+            // The last option is that we had leftover free space.
+            // In that case, we can still just swap items around since we did a complete copy of
+            // the file, and then add the partially depleted free item as our next item to check.
+            // (And also the free space being wrong on the right side doesn't matter for p1 since
+            // we compact piece by piece).
+            disk.swap(left_idx, right_idx);
+            disk.insert(left_idx + 1, DiskItem::Free(free_size - size));
+            // Since we inserted an item, we don't need to shift right_idx downwards.
+            // We can save an iteration by moving to the new free item, though:
+            left_idx += 1;
         }
     }
 
