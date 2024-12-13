@@ -178,7 +178,7 @@ fn compact_disk_cool(disk: &mut Vec<DiskItem>) {
     while left_bound < right_bound {
         // Get to the rightmost file
         // If we are not over a file, keep searching
-        let DiskItem::File { id, size } = disk[right_bound] else {
+        let DiskItem::File { id: _, size: _ } = disk[right_bound] else {
             right_bound -= 1;
             continue;
         };
@@ -188,6 +188,11 @@ fn compact_disk_cool(disk: &mut Vec<DiskItem>) {
             only_saw_files,
         }) = try_move_to_leftmost_free_space(disk, left_bound, &mut right_bound)
         {
+            // Interesting note: some initial benchmarking suggested that this caused a roughly 50%
+            // speedup - from 60ms to 40ms. I guess that there is a lot of repeated iteration,
+            // which hints at the necessary optimization to bring the runtime of this a bit lower:
+            // Somehow caching results or indexing information in a different way, like hashmaps of
+            // free space, or something of the sort, didn't think about it too much yet.
             if only_saw_files {
                 // From the current value of left_bound until where we copied the file to, we only
                 // saw other files (we already filled in the free space we had found).
