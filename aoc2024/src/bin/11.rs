@@ -27,25 +27,15 @@ fn solve_day(input: String) -> (usize, usize) {
 
     // println!("start: {:?}", stones_frequency);
 
-    // To save on always allocating a new map, we switch back and forth between these
-    let mut output_map = HashMap::with_capacity(stones_frequency.len());
-
     for _i in 0..25 {
-        blink(&mut stones_frequency, &mut output_map);
-
-        // Swap variables
-        std::mem::swap(&mut stones_frequency, &mut output_map);
-
+        stones_frequency = blink(stones_frequency);
         // println!("{_i}: {:?}", stones_frequency);
     }
 
     let p1 = stones_frequency.values().sum();
 
     for _i in 0..50 {
-        blink(&mut stones_frequency, &mut output_map);
-
-        // Swap variables
-        std::mem::swap(&mut stones_frequency, &mut output_map);
+        stones_frequency = blink(stones_frequency);
     }
 
     let p2 = stones_frequency.values().sum();
@@ -53,48 +43,60 @@ fn solve_day(input: String) -> (usize, usize) {
     (p1, p2)
 }
 
-fn blink(stones: &HashMap<usize, usize>, output: &mut HashMap<usize, usize>) {
-    // BUG: Since we are not preserving the stones order and making the change in-place, we are
-    // working on intermediate updated values, so we might transform more stones than we actually
-    // should, because they should not have had that value yet.
+fn blink(stones: HashMap<usize, usize>) -> HashMap<usize, usize> {
+    // Creating a new map each time is actually roughly the same or very slightly more efficient
+    // than swapping back and forth between two maps, clearing them between iterations.
+    // So, just revert back to that simpler approach and ignore the big blocks of commnted text.
     //
-    // Ideas for solutions:
-    // 1. Use two maps and just switch back and forth. This reduces allocations I guess but ends up
-    //    being similar to the original solution. Here we would just be .clear()ing the output map
-    //    each time and swapping them around I guess.
-    // 2. Output all the changes into a list, and only "commit" them later, all in one go.
-    //
-    // Option 2 made things slower, so trying out option 1.
-    // Conclusion: roughly same runtime as original solution that always created a new hashmap from
-    // the previous one. Marginally slower even, but in a very low scale so it could just be a
-    // measurement error. Rust is very efficient at optimizing this, it seems.
-    // So, NOTE: This is not the fastest solution out of the ones I've implemented, ironically.
-    // The first non-naive solution is.
+    // Interesting observation: Using ::with_capacity here saves us some time, total runtime drops
+    // from 6ms using ::new, to 4ms using ::with_capacity. My guess is that the consumed HashMap is
+    // freed and then reused in the allocation for the next one, as it retains a similar size,
+    // which might justify why it's as efficient as swapping two hashmaps around.
+    let mut new_stones = HashMap::with_capacity(stones.len());
 
-    // We clear the map: keeps allocated memory, but not the intermediate values which might have
-    // been wrong.
-    // Update: Tried just setting the values and never clearing the map, and the result was wrong.
-    // So experimentation seems to show that that optimization is not possible :)
-    output.clear();
+    //// BUG: Since we are not preserving the stones order and making the change in-place, we are
+    //// working on intermediate updated values, so we might transform more stones than we actually
+    //// should, because they should not have had that value yet.
+    ////
+    //// Ideas for solutions:
+    //// 1. Use two maps and just switch back and forth. This reduces allocations I guess but ends up
+    ////    being similar to the original solution. Here we would just be .clear()ing the output map
+    ////    each time and swapping them around I guess.
+    //// 2. Output all the changes into a list, and only "commit" them later, all in one go.
+    ////
+    //// Option 2 made things slower, so trying out option 1.
+    //// Conclusion: roughly same runtime as original solution that always created a new hashmap from
+    //// the previous one. Marginally slower even, but in a very low scale so it could just be a
+    //// measurement error. Rust is very efficient at optimizing this, it seems.
+    //// So, NOTE: This is not the fastest solution out of the ones I've implemented, ironically.
+    //// The first non-naive solution is.
+
+    //// We clear the map: keeps allocated memory, but not the intermediate values which might have
+    //// been wrong.
+    //// Update: Tried just setting the values and never clearing the map, and the result was wrong.
+    //// So experimentation seems to show that that optimization is not possible :)
+    //output.clear();
 
     for (value, count) in stones {
         // Rule 1: 0->1
-        if *value == 0 {
-            *output.entry(1).or_default() += *count;
+        if value == 0 {
+            *new_stones.entry(1).or_default() += count;
             continue;
         }
 
         // Rule 2: even digits = split off
         // This means that we will have count stones with each of the values
-        if let Some((stone1_value, stone2_value)) = split_if_even_digits(*value) {
-            *output.entry(stone1_value).or_default() += *count;
-            *output.entry(stone2_value).or_default() += *count;
+        if let Some((stone1_value, stone2_value)) = split_if_even_digits(value) {
+            *new_stones.entry(stone1_value).or_default() += count;
+            *new_stones.entry(stone2_value).or_default() += count;
             continue;
         }
 
         // Rule 3: value*2024
-        *output.entry(value * 2024).or_default() += count;
+        *new_stones.entry(value * 2024).or_default() += count;
     }
+
+    new_stones
 }
 
 fn split_if_even_digits(n: usize) -> Option<(usize, usize)> {
