@@ -25,11 +25,11 @@ fn solve_day(input: String) -> (usize, usize) {
         *stones_frequency.entry(stone_value).or_default() += 1;
     }
 
-    println!("start: {:?}", stones_frequency);
+    // println!("start: {:?}", stones_frequency);
 
     for _i in 0..25 {
         blink(&mut stones_frequency);
-        println!("{_i}: {:?}", stones_frequency);
+        // println!("{_i}: {:?}", stones_frequency);
     }
 
     let p1 = stones_frequency.values().sum();
@@ -53,8 +53,11 @@ fn blink(stones: &mut HashMap<usize, usize>) {
     //    being similar to the original solution. Here we would just be .clear()ing the output map
     //    each time and swapping them around I guess.
     // 2. Output all the changes into a list, and only "commit" them later, all in one go.
+    //
+    // Trying option 2 as the more straightforward and honestly maybe more likely to be effective.
 
     let existing_stone_values: Vec<usize> = stones.keys().cloned().collect();
+    let mut changed_stones: Vec<(usize, usize)> = Vec::with_capacity(stones.len());
 
     for value in existing_stone_values {
         // Almost like a .pop for a queue, so that we don't need to reset it later and minimize
@@ -63,20 +66,31 @@ fn blink(stones: &mut HashMap<usize, usize>) {
 
         // Rule 1: 0->1
         if value == 0 {
-            *stones.entry(1).or_default() += count;
+            // *stones.entry(1).or_default() += count;
+            changed_stones.push((1, count));
             continue;
         }
 
         // Rule 2: even digits = split off
         // This means that we will have count stones with each of the values
         if let Some((stone1_value, stone2_value)) = split_if_even_digits(value) {
-            *stones.entry(stone1_value).or_default() += count;
-            *stones.entry(stone2_value).or_default() += count;
+            // *stones.entry(stone1_value).or_default() += count;
+            changed_stones.push((stone1_value, count));
+            // *stones.entry(stone2_value).or_default() += count;
+            changed_stones.push((stone2_value, count));
             continue;
         }
 
         // Rule 3: value*2024
-        *stones.entry(value * 2024).or_default() += count;
+        // *stones.entry(value * 2024).or_default() += count;
+        changed_stones.push((value * 2024, count));
+    }
+
+    // Update all values at once, after we compute the changes
+    // This avoids working on dirty state and accidentally moving around wrong counts since more
+    // stones changed to a value mid-iteration
+    for (value, count) in changed_stones {
+        *stones.entry(value).or_default() += count;
     }
 }
 
@@ -109,7 +123,7 @@ fn prod_solution() {
     let input = read_to_string(format!("inputs/{}", "11.in")).unwrap();
     let res = solve_day(input);
     assert_eq!(res.0, 199986);
-    assert_eq!(res.1, 42);
+    assert_eq!(res.1, 236804088748754);
 }
 
 aoc2024::day_main!("11.in");
