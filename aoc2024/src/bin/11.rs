@@ -27,15 +27,25 @@ fn solve_day(input: String) -> (usize, usize) {
 
     // println!("start: {:?}", stones_frequency);
 
+    // To save on always allocating a new map, we switch back and forth between these
+    let mut output_map = HashMap::with_capacity(stones_frequency.len());
+
     for _i in 0..25 {
-        blink(&mut stones_frequency);
+        blink(&mut stones_frequency, &mut output_map);
+
+        // Swap variables
+        std::mem::swap(&mut stones_frequency, &mut output_map);
+
         // println!("{_i}: {:?}", stones_frequency);
     }
 
     let p1 = stones_frequency.values().sum();
 
     for _i in 0..50 {
-        blink(&mut stones_frequency);
+        blink(&mut stones_frequency, &mut output_map);
+
+        // Swap variables
+        std::mem::swap(&mut stones_frequency, &mut output_map);
     }
 
     let p2 = stones_frequency.values().sum();
@@ -43,7 +53,7 @@ fn solve_day(input: String) -> (usize, usize) {
     (p1, p2)
 }
 
-fn blink(stones: &mut HashMap<usize, usize>) {
+fn blink(stones: &HashMap<usize, usize>, output: &mut HashMap<usize, usize>) {
     // BUG: Since we are not preserving the stones order and making the change in-place, we are
     // working on intermediate updated values, so we might transform more stones than we actually
     // should, because they should not have had that value yet.
@@ -54,43 +64,33 @@ fn blink(stones: &mut HashMap<usize, usize>) {
     //    each time and swapping them around I guess.
     // 2. Output all the changes into a list, and only "commit" them later, all in one go.
     //
-    // Trying option 2 as the more straightforward and honestly maybe more likely to be effective.
+    // Option 2 made things slower, so trying out option 1.
 
-    let existing_stone_values: Vec<usize> = stones.keys().cloned().collect();
-    let mut changed_stones: Vec<(usize, usize)> = Vec::with_capacity(stones.len());
+    // We clear the map: keeps allocated memory, but not the intermediate values which might have
+    // been wrong.
+    // TODO: Determine if actually we can keep the values but just overwrite them.
+    // If we conclude that there is only one way to get to a value (probably needs more math than I
+    // know how to do) we can do that. And instead of doing += count we just set it.
+    // (Better than doing math it will just be to try it out lol)
+    output.clear();
 
-    for value in existing_stone_values {
-        // Almost like a .pop for a queue, so that we don't need to reset it later and minimize
-        // used space.
-        let count = stones.remove(&value).unwrap();
-
+    for (value, count) in stones {
         // Rule 1: 0->1
-        if value == 0 {
-            // *stones.entry(1).or_default() += count;
-            changed_stones.push((1, count));
+        if *value == 0 {
+            *output.entry(1).or_default() += *count;
             continue;
         }
 
         // Rule 2: even digits = split off
         // This means that we will have count stones with each of the values
-        if let Some((stone1_value, stone2_value)) = split_if_even_digits(value) {
-            // *stones.entry(stone1_value).or_default() += count;
-            changed_stones.push((stone1_value, count));
-            // *stones.entry(stone2_value).or_default() += count;
-            changed_stones.push((stone2_value, count));
+        if let Some((stone1_value, stone2_value)) = split_if_even_digits(*value) {
+            *output.entry(stone1_value).or_default() += *count;
+            *output.entry(stone2_value).or_default() += *count;
             continue;
         }
 
         // Rule 3: value*2024
-        // *stones.entry(value * 2024).or_default() += count;
-        changed_stones.push((value * 2024, count));
-    }
-
-    // Update all values at once, after we compute the changes
-    // This avoids working on dirty state and accidentally moving around wrong counts since more
-    // stones changed to a value mid-iteration
-    for (value, count) in changed_stones {
-        *stones.entry(value).or_default() += count;
+        *output.entry(value * 2024).or_default() += count;
     }
 }
 
