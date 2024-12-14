@@ -27,15 +27,20 @@ fn solve_day(input: String) -> (usize, usize) {
 
     // println!("start: {:?}", stones_frequency);
 
+    // Try to cache stone transition calculation to see if this improves runtime.
+    // We can start by caching the first rule, as it is sure to appear.
+    let mut transition_cache: HashMap<usize, (usize, Option<usize>)> =
+        HashMap::from([(0, (1, None))]);
+
     for _i in 0..25 {
-        stones_frequency = blink(stones_frequency);
+        stones_frequency = blink(stones_frequency, &mut transition_cache);
         // println!("{_i}: {:?}", stones_frequency);
     }
 
     let p1 = stones_frequency.values().sum();
 
     for _i in 0..50 {
-        stones_frequency = blink(stones_frequency);
+        stones_frequency = blink(stones_frequency, &mut transition_cache);
     }
 
     let p2 = stones_frequency.values().sum();
@@ -43,7 +48,10 @@ fn solve_day(input: String) -> (usize, usize) {
     (p1, p2)
 }
 
-fn blink(stones: HashMap<usize, usize>) -> HashMap<usize, usize> {
+fn blink(
+    stones: HashMap<usize, usize>,
+    transition_cache: &mut HashMap<usize, (usize, Option<usize>)>,
+) -> HashMap<usize, usize> {
     // Creating a new map each time is actually roughly the same or very slightly more efficient
     // than swapping back and forth between two maps, clearing them between iterations.
     // So, just revert back to that simpler approach and ignore the big blocks of commnted text.
@@ -78,7 +86,19 @@ fn blink(stones: HashMap<usize, usize>) -> HashMap<usize, usize> {
     //output.clear();
 
     for (value, count) in stones {
+        // Check for cached value
+        if let Some((stone1, stone2)) = transition_cache.get(&value) {
+            // Cached value, just apply transformation and exit
+            *new_stones.entry(*stone1).or_default() += count;
+            if let Some(stone2) = stone2 {
+                *new_stones.entry(*stone2).or_default() += count;
+            }
+
+            continue;
+        }
+
         // Rule 1: 0->1
+        // With the new transition_cache this should always be cached :)
         if value == 0 {
             *new_stones.entry(1).or_default() += count;
             continue;
@@ -89,11 +109,14 @@ fn blink(stones: HashMap<usize, usize>) -> HashMap<usize, usize> {
         if let Some((stone1_value, stone2_value)) = split_if_even_digits(value) {
             *new_stones.entry(stone1_value).or_default() += count;
             *new_stones.entry(stone2_value).or_default() += count;
+            transition_cache.insert(value, (stone1_value, Some(stone2_value)));
             continue;
         }
 
         // Rule 3: value*2024
-        *new_stones.entry(value * 2024).or_default() += count;
+        let new_value = value * 2024;
+        *new_stones.entry(new_value).or_default() += count;
+        transition_cache.insert(value, (new_value, None));
     }
 
     new_stones

@@ -12,10 +12,13 @@ fn parse_prefixed_coords(prefixed_coords: &str) -> (isize, isize) {
     (coords.next().unwrap(), coords.next().unwrap())
 }
 
+const PART_2_SHIFT: isize = 10000000000000;
+
 fn solve_day(input: String) -> (usize, usize) {
     let mut lines = input.lines();
 
     let mut total_cost = 0;
+    let mut total_cost_p2 = 0;
 
     while let (Some(a_line), Some(b_line), Some(prize_line)) =
         (lines.next(), lines.next(), lines.next())
@@ -48,13 +51,30 @@ fn solve_day(input: String) -> (usize, usize) {
             }
         }
 
+        // For p2, calculate it with a 10000000000000 unit shift, and remove the 100 moves upper
+        // bound (problem statement was definitely _not_ clear about that second step).
+        match calc_prize_presses(
+            prize_x + PART_2_SHIFT,
+            prize_y + PART_2_SHIFT,
+            a_x,
+            a_y,
+            b_x,
+            b_y,
+        ) {
+            Some((a_presses, b_presses)) => {
+                let cost = a_presses * 3 + b_presses;
+                total_cost_p2 += cost;
+            }
+            _ => {}
+        }
+
         // If parsing successful, skip the empty line regardless of if it exists or not
         lines.next();
     }
 
     let p1 = total_cost;
 
-    let p2 = 0;
+    let p2 = total_cost_p2;
 
     (p1, p2)
 }
@@ -73,6 +93,8 @@ fn solve_day(input: String) -> (usize, usize) {
 ///
 /// For some reason, maxima got it wrong? The substitution worked, but applying Cramer's rule we
 /// get a different outcome, now actually used in the code below.
+/// Ok, funnily enough, got exactly the same outcome with both operations now. The solutions seem
+/// to be equivalent, something that my rusty calculus brain could not see :facepalm:.
 fn calc_prize_presses(
     xp: isize,
     yp: isize,
@@ -81,11 +103,26 @@ fn calc_prize_presses(
     xb: isize,
     yb: isize,
 ) -> Option<(usize, usize)> {
-    let denom = xb * ya - xa * yb;
-    let ka = -(xp * yb - xb * yp) / denom;
-    let kb = (xp * ya - xa * yp) / denom;
+    let denom = xa * yb - ya * xb;
+    if denom == 0 {
+        // There is no intersection between these two equations.
+        // It seems that the input protects us against it but still good to check.
+        return None;
+    }
 
-    Some((ka.try_into().ok()?, kb.try_into().ok()?))
+    let num_a = xp * yb - xb * yp;
+    let num_b = xa * yp - xp * ya;
+
+    // Guard versus edge cases since we are doing integer division.
+    if num_a % denom != 0 || num_b % denom != 0 {
+        // Result would be non-integer, therefore we cannot consider it.
+        return None;
+    }
+
+    Some((
+        (num_a / denom).try_into().ok()?,
+        (num_b / denom).try_into().ok()?,
+    ))
 }
 
 #[test]
@@ -108,7 +145,7 @@ Prize: X=18641, Y=10279"
         .to_owned();
     let res = solve_day(input);
     assert_eq!(res.0, 480);
-    // assert_eq!(res.1, 81);
+    assert_eq!(res.1, 875318608908);
 }
 
 #[test]
@@ -118,8 +155,8 @@ fn prod_solution() {
     let input = read_to_string(format!("inputs/{}", "13.in")).unwrap();
     let res = solve_day(input);
     // 41635 is too high
-    assert_eq!(res.0, 42);
-    assert_eq!(res.1, 42);
+    assert_eq!(res.0, 39748);
+    assert_eq!(res.1, 74478585072604);
 }
 
 aoc2024::day_main!("13.in");
