@@ -1,5 +1,7 @@
 #![feature(test)]
 
+use std::collections::{BTreeMap, HashMap};
+
 extern crate test;
 
 // Using isizes everywhere since velocities can be negative, and mixing signed and unsigned is
@@ -16,8 +18,10 @@ fn solve_day(input: String) -> (usize, usize) {
 }
 
 fn solve_day_with_gridsize(input: String, grid_width: isize, grid_height: isize) -> (usize, usize) {
-    // top left, top right, bottom left, bottom right
-    let mut quadrants = [0usize; 4];
+    // Checking all first 100 seconds to get the minimum safety score, praying that it's the xmas
+    // tree.
+    // quadrants are organized: top left, top right, bottom left, bottom right
+    let mut quadrants_by_secs: HashMap<usize, [usize; 4]> = HashMap::with_capacity(100);
     // Cache this division
     let grid_mid_width = grid_width / 2;
     let grid_mid_width = grid_mid_width.try_into().unwrap();
@@ -29,19 +33,40 @@ fn solve_day_with_gridsize(input: String, grid_width: isize, grid_height: isize)
         let p0 = parse_prefixed_coord(p_str);
         let v0 = parse_prefixed_coord(v_str);
 
-        let final_coord = calc_final_robot_coord(p0, v0, grid_width, grid_height, 100);
-        if let Some(robot_quadrant) = calc_quadrant(final_coord, grid_mid_width, grid_mid_height) {
-            quadrants[robot_quadrant] += 1;
+        for seconds in 1..=30000 {
+            let final_coord = calc_final_robot_coord(p0, v0, grid_width, grid_height, seconds);
+            if let Some(robot_quadrant) =
+                calc_quadrant(final_coord, grid_mid_width, grid_mid_height)
+            {
+                quadrants_by_secs.entry(seconds as usize).or_default()[robot_quadrant] += 1;
+            }
         }
     }
 
     // dbg!(quadrants);
 
-    let p1 = quadrants.into_iter().product();
+    let p1 = quadrants_to_safety_score(quadrants_by_secs.get(&100).unwrap());
 
-    let p2 = 0;
+    let secs_by_safety_score = quadrants_by_secs
+        .iter()
+        .map(|(sec, quadrants)| (quadrants_to_safety_score(quadrants), sec));
+    // Problem: This overwrites the safety score if it's the same, so we don't see the cycles...
+    // E.g. 27558 and 48364 have the same safety score but I only saw via experimentation.
+    let secs_by_safety_score = BTreeMap::from_iter(secs_by_safety_score);
+    let lowest_safety_scores: Vec<_> = secs_by_safety_score
+        .iter()
+        .take(20)
+        .inspect(|safety_score_second| println!("{:?}", safety_score_second))
+        .collect();
+
+    // Find second with minimum safety score
+    let p2 = **lowest_safety_scores[1].1;
 
     (p1, p2)
+}
+
+fn quadrants_to_safety_score(quadrants: &[usize; 4]) -> usize {
+    quadrants.iter().product()
 }
 
 /// Returns which quadrant the position is in, None if in between quadrants.
@@ -122,6 +147,11 @@ fn prod_solution() {
     // 78914880 is too low. I was using the example grid size rather than the real one
     // (11x7 vs 101x103).
     assert_eq!(res.0, 225810288);
+    // 86 (min safety score) is not the right answer...
+    // 490 is too low. So we probably haven't hit the cycle yet.
+    // 27558 is too high apparently.
+    // ; Safety score for 48364 is the same, so the cycle might happen earlier, lowering num iters
+    // to check.
     assert_eq!(res.1, 42);
 }
 
