@@ -1,6 +1,6 @@
 #![feature(test)]
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeSet, HashMap};
 
 extern crate test;
 
@@ -9,6 +9,8 @@ extern crate test;
 
 const GRID_WIDTH: isize = 101;
 const GRID_HEIGHT: isize = 103;
+
+const P2_ITERS: usize = 30000;
 
 // Tried OnceLock but apparently static's are shared between tests so we couldn't reuse code for
 // example and "prod"
@@ -33,7 +35,7 @@ fn solve_day_with_gridsize(input: String, grid_width: isize, grid_height: isize)
         let p0 = parse_prefixed_coord(p_str);
         let v0 = parse_prefixed_coord(v_str);
 
-        for seconds in 1..=30000 {
+        for seconds in 1..=P2_ITERS {
             let final_coord = calc_final_robot_coord(p0, v0, grid_width, grid_height, seconds);
             if let Some(robot_quadrant) =
                 calc_quadrant(final_coord, grid_mid_width, grid_mid_height)
@@ -49,18 +51,53 @@ fn solve_day_with_gridsize(input: String, grid_width: isize, grid_height: isize)
 
     let secs_by_safety_score = quadrants_by_secs
         .iter()
-        .map(|(sec, quadrants)| (quadrants_to_safety_score(quadrants), sec));
-    // Problem: This overwrites the safety score if it's the same, so we don't see the cycles...
-    // E.g. 27558 and 48364 have the same safety score but I only saw via experimentation.
-    let secs_by_safety_score = BTreeMap::from_iter(secs_by_safety_score);
-    let lowest_safety_scores: Vec<_> = secs_by_safety_score
-        .iter()
-        .take(20)
-        .inspect(|safety_score_second| println!("{:?}", safety_score_second))
-        .collect();
+        .map(|(sec, quadrants)| (sec, quadrants_to_safety_score(quadrants)));
+    // Problem: We overwrites the safety score if it's the same due to the key being the same.
+    // As such, we don't see the cycles...
+    // // E.g. 27558 and 48364 have the same safety score (96433341) but I only saw via experimentation.
+    // So, let's use a custom struct so we can use our own Ord implementation and use a BTreeSet.
+
+    #[derive(Eq, PartialEq, Debug)]
+    struct Wrapper {
+        second: usize,
+        safety_score: usize,
+    }
+
+    /// This will sort by safety score, and if it's the same, sort by second instead, so we always
+    /// get the lowest second.
+    impl Ord for Wrapper {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            match self.safety_score.cmp(&other.safety_score) {
+                std::cmp::Ordering::Equal => self.second.cmp(&other.second),
+                x => x,
+            }
+        }
+    }
+
+    impl PartialOrd for Wrapper {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    let secs_by_safety_score = secs_by_safety_score.map(|(&second, safety_score)| Wrapper {
+        second,
+        safety_score,
+    });
+
+    let sorted_secs_and_safety_score = BTreeSet::from_iter(secs_by_safety_score);
+
+    // let secs_by_safety_score = BTreeMap::from_iter(secs_by_safety_score);
+
+    // This is actually not necessary, just did it for debugging
+    // let lowest_safety_scores: Vec<_> = sorted_secs_and_safety_score
+    //     .iter()
+    //     .take(20)
+    //     .inspect(|x| println!("{:?}", x))
+    //     .collect();
 
     // Find second with minimum safety score
-    let p2 = **lowest_safety_scores[1].1;
+    let p2 = sorted_secs_and_safety_score.first().unwrap().second;
 
     (p1, p2)
 }
@@ -152,7 +189,8 @@ fn prod_solution() {
     // 27558 is too high apparently.
     // ; Safety score for 48364 is the same, so the cycle might happen earlier, lowering num iters
     // to check.
-    assert_eq!(res.1, 42);
+    // After only storing the lowest second when the score matches, we got it :)
+    assert_eq!(res.1, 6752);
 }
 
 aoc2024::day_main!("14.in");
