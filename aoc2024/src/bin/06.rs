@@ -1,6 +1,5 @@
 #![feature(test)]
 
-use std::collections::{BTreeSet, HashMap, HashSet};
 extern crate test;
 
 #[derive(Debug)]
@@ -11,185 +10,102 @@ enum Heading {
     Left,
 }
 
-/// Should probably just be 130, but this way we get a safety margin
-#[allow(unused)]
-fn coord_to_pair(x: usize, y: usize) -> (usize, usize) {
-    (x, y)
+impl Heading {
+    fn turn_right(self) -> Self {
+        use Heading as H;
+        match self {
+            H::Up => H::Right,
+            H::Right => H::Down,
+            H::Down => H::Left,
+            H::Left => H::Up,
+        }
+    }
+
+    fn get_coord_shift(&self) -> (isize, isize) {
+        match self {
+            Heading::Up => (0, -1),
+            Heading::Right => (1, 0),
+            Heading::Down => (0, 1),
+            Heading::Left => (-1, 0),
+        }
+    }
 }
+
+// Could've used an enum but trying to be more space-efficient with u8s
+const GRID_EMPTY: u8 = 0;
+const GRID_OBSTACLE: u8 = 1;
+const GRID_SEEN: u8 = 2;
 
 // TODO: Test making this a power of 2 to see if it's more efficient lol
-const WRAP_VALUE: usize = 140;
-// TODO: Use this instead for efficiency
-fn coord_to_collapsed_int(x: usize, y: usize) -> usize {
-    x + y * WRAP_VALUE
-}
+const MAX_GRID_SIZE: usize = 140;
 
 fn solve_day(input: String) -> (usize, usize) {
-    let mut guard_start_pos = None;
+    let mut guard_start_pos: Option<(isize, isize)> = None;
     // So we can know when the guard goes off the grid
     let grid_size = input.lines().next().unwrap().len();
-    // col means same X, so we get the Ys
-    let mut obstacle_by_col: HashMap<usize, BTreeSet<usize>> = HashMap::new();
-    // row means same Y, so we get the Xs
-    let mut obstacle_by_row: HashMap<usize, BTreeSet<usize>> = HashMap::new();
+
+    // Ensures we can keep this as a [] rather than Vec
+    assert!(grid_size <= MAX_GRID_SIZE);
+
+    // TODO: Think that there might be an issue with "wrapping"
+    // - might need to manually check bounds on right and left.
+    let mut grid = [GRID_EMPTY; MAX_GRID_SIZE * MAX_GRID_SIZE];
 
     for (y, line) in input.trim_end().lines().enumerate() {
         for (x, item) in line.bytes().enumerate() {
             match item {
                 // Obstacle
                 b'#' => {
-                    obstacle_by_col.entry(x).or_default().insert(y);
-                    obstacle_by_row.entry(y).or_default().insert(x);
+                    grid[x + y * MAX_GRID_SIZE] = GRID_OBSTACLE;
                 }
                 // Guard start pos
                 b'^' => {
-                    let _ = guard_start_pos.insert((x, y));
+                    let _ = guard_start_pos.insert((x.try_into().unwrap(), y.try_into().unwrap()));
                 }
                 _ => {}
             }
         }
     }
 
-    // println!("by row: {:?}", obstacle_by_row);
-    // println!("by col: {:?}", obstacle_by_col);
-
     let (mut guard_x, mut guard_y) = guard_start_pos.expect("start position should be set");
+    // Mark starting position as seen
+    grid[guard_x as usize + guard_y as usize * MAX_GRID_SIZE] = GRID_SEEN;
     // Guard always starts facing up
     let mut guard_heading = Heading::Up;
 
-    // We can store the visited coords into an HashSet. Since we know that the coords cap at
-    // 130x130 for puzzle input (even smaller for example) we can try to represent them as a single
-    // int. Trying that out since it's more efficient lol.
-    let mut seen_coords = HashSet::new();
-    seen_coords.insert(coord_to_collapsed_int(guard_x, guard_y));
-
     // Move the guard around until they go off map
     loop {
-        // TODO: Refactor the loop a bit to be nicer
-        // We can probably also simplify the ranges logic to have a "final_x"/"final_y" var that we
-        // use instead.
-        // println!("{},{} - going {:?}", guard_x, guard_y, guard_heading);
-        match guard_heading {
-            Heading::Up => {
-                // Determine the next obstacle that is found (same column, < y)
-                let candidate_obstacle = obstacle_by_col.get(&guard_x).and_then(|obstacles| {
-                    obstacles
-                        .iter()
-                        .filter(|&obstacle_y| obstacle_y < &guard_y)
-                        // Take in reverse since the BTreeSet goes in ascending order, and we want the
-                        // largest one (closest to the guard that is going upwards)
-                        .next_back()
-                });
+        let coord_shift = guard_heading.get_coord_shift();
 
-                if let Some(&obstacle_y) = candidate_obstacle {
-                    // Travel until the obstacle, then turn right.
-                    let traveled_coords =
-                        (obstacle_y + 1..=guard_y).map(|y| coord_to_collapsed_int(guard_x, y));
-                    seen_coords.extend(traveled_coords);
-                    // Guard doesn't step over the obstacle but instead stays in the space before
-                    guard_y = obstacle_y + 1;
-                    guard_heading = Heading::Right;
-                } else {
-                    // No obstacle found, let's go off grid and exit
-                    // We go from the current y to 0
-                    let traveled_coords = (0..=guard_y).map(|y| coord_to_collapsed_int(guard_x, y));
-                    seen_coords.extend(traveled_coords);
-                    println!("started at {},{}, going off grid", guard_x, guard_y);
-                    break;
-                }
+        let next_x = guard_x + coord_shift.0;
+        let next_y = guard_y + coord_shift.1;
+        if next_x == -1
+            || next_y == -1
+            || next_x >= grid_size as isize
+            || next_y >= grid_size as isize
+        {
+            // Went off grid in this step, we're done!
+            break;
+        }
+        // We checked bounds above and only go 1 at a time, so this is safe
+        let next_elem = &mut grid[next_x as usize + next_y as usize * MAX_GRID_SIZE];
+
+        match next_elem {
+            &mut GRID_OBSTACLE => {
+                guard_heading = guard_heading.turn_right();
             }
-            Heading::Right => {
-                // Determine the next obstacle - same row, > x
-                let candidate_obstacle = obstacle_by_row.get(&guard_y).and_then(|obstacles| {
-                    obstacles
-                        .iter()
-                        .filter(|&obstacle_x| obstacle_x > &guard_x)
-                        // Take in reverse since the BTreeSet goes in ascending order, and we want the
-                        // largest one (closest to the guard that is going to the right)
-                        .next_back()
-                });
-
-                if let Some(&obstacle_x) = candidate_obstacle {
-                    // Travel until the obstacle, then turn down.
-                    let traveled_coords =
-                        (guard_x..obstacle_x).map(|x| coord_to_collapsed_int(x, guard_y));
-                    seen_coords.extend(traveled_coords);
-                    // Guard doesn't step over the obstacle but instead stays in the space before
-                    guard_x = obstacle_x - 1;
-                    guard_heading = Heading::Down;
-                } else {
-                    // No obstacle found, let's go off grid and exit
-                    // We go from the current x to grid size
-                    let traveled_coords =
-                        (guard_x..=grid_size).map(|x| coord_to_collapsed_int(x, guard_y));
-                    seen_coords.extend(traveled_coords);
-                    println!("started at {},{}, going off grid", guard_x, guard_y);
-                    break;
-                }
-            }
-            Heading::Down => {
-                // Determine the next obstacle that is found (same column, > y)
-                let candidate_obstacle = obstacle_by_col.get(&guard_x).and_then(|obstacles| {
-                    obstacles.iter().find(|&obstacle_y| obstacle_y > &guard_y)
-                });
-
-                if let Some(&obstacle_y) = candidate_obstacle {
-                    // Travel until the obstacle, then turn left.
-                    let traveled_coords =
-                        (guard_y..obstacle_y).map(|y| coord_to_collapsed_int(guard_x, y));
-                    seen_coords.extend(traveled_coords);
-                    // Guard doesn't step over the obstacle but instead stays in the space before
-                    guard_y = obstacle_y - 1;
-                    guard_heading = Heading::Left;
-                } else {
-                    // No obstacle found, let's go off grid and exit
-                    // We go from the current y to max grid size
-                    let traveled_coords =
-                        (guard_y..=grid_size).map(|y| coord_to_collapsed_int(guard_x, y));
-                    seen_coords.extend(traveled_coords);
-                    println!("started at {},{}, going off grid", guard_x, guard_y);
-                    break;
-                }
-            }
-            Heading::Left => {
-                // Determine the next obstacle - same row, < x
-                let candidate_obstacle = obstacle_by_row.get(&guard_y).and_then(|obstacles| {
-                    obstacles.iter().find(|&obstacle_x| obstacle_x < &guard_x)
-                });
-
-                if let Some(&obstacle_x) = candidate_obstacle {
-                    // Travel until the obstacle, then turn upwards.
-                    let traveled_coords =
-                        (obstacle_x + 1..=guard_x).map(|x| coord_to_collapsed_int(x, guard_y));
-                    seen_coords.extend(traveled_coords);
-                    // Guard doesn't step over the obstacle but instead stays in the space before
-                    guard_x = obstacle_x + 1;
-                    guard_heading = Heading::Up;
-                } else {
-                    // No obstacle found, let's go off grid and exit
-                    // We go from the current x to grid size
-                    let traveled_coords = (0..=guard_x).map(|x| coord_to_collapsed_int(x, guard_y));
-                    seen_coords.extend(traveled_coords);
-                    println!("started at {},{}, going off grid", guard_x, guard_y);
-                    break;
-                }
+            _ => {
+                *next_elem = GRID_SEEN;
+                guard_x = next_x;
+                guard_y = next_y;
             }
         }
     }
 
-    // println!("{:?}", seen_coords);
-
-    // let mut m: HashMap<usize, BTreeSet<usize>> = HashMap::new();
-    // for item in seen_coords.iter() {
-    //     m.entry(item.0).or_default().insert(item.1);
-    // }
-
-    // for (x, line) in m {
-    //     println!("{} -> {:?}", x, line);
-    // }
-
-    // -1 since we are also inserting the off-grid stuff :sweat_smile:
-    let p1 = seen_coords.len() - 1;
+    // TODO: Move this counting into above, can just check if the element was not previously seen.
+    // TODO: We can also bench if it's faster to "cut-off" by iterating only within grid_size x
+    // grid_size, rather than the whole array/matrix.
+    let p1 = grid.into_iter().filter(|&elem| elem == GRID_SEEN).count();
 
     let p2 = 0;
 
@@ -220,7 +136,10 @@ fn prod_solution() {
 
     let input = read_to_string(format!("inputs/{}", "6.in")).unwrap();
     let res = solve_day(input);
-    assert_eq!(res.0, 42);
+    // 4452 is too low... yes I tested it and 4453 is also too low so it's not an off-by-one.
+    // Ok it was actually 4454 since I forgot to mark the starting position as seen, and initially
+    // I had an off-by-one error due to > rather than >= grid_size in the loop end condition.
+    assert_eq!(res.0, 4454);
     assert_eq!(res.1, 42);
 }
 
