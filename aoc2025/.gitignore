@@ -1,0 +1,8 @@
+/target
+.session
+# Apparently we are asked to not share these
+inputs/
+# But we need the folder structure still
+!inputs/.keep
+# Also we can keep the example files since they're shared publicly
+!inputs/.*example.in
