@@ -8,6 +8,7 @@ fn solve_day(input: String) -> (usize, usize) {
     // (We may have multiple post-requirements for the same pre-req)
     let mut rules: HashMap<usize, Vec<usize>> = HashMap::new();
     let mut sum_of_valid_middles = 0;
+    let mut sum_of_fixed_middles = 0;
 
     for line in input.lines() {
         if line.contains('|') {
@@ -35,15 +36,21 @@ fn solve_day(input: String) -> (usize, usize) {
 
     let p1 = sum_of_valid_middles;
 
-    let p2 = 0;
+    let p2 = sum_of_fixed_middles;
 
     (p1, p2)
+}
+
+fn fix_update(update_page_nrs: Vec<usize>, rules: &HashMap<usize, Vec<usize>>) -> Vec<usize> {
+    todo!()
 }
 
 fn update_respects_ordering_rules(
     update_page_nrs: &[usize],
     rules: &HashMap<usize, Vec<usize>>,
 ) -> bool {
+    // TODO: Idea for p2, have this be a hashmap of when the item was encountered, as then we can
+    // insert the item in the right index when seeing that the index is wrong (?)
     let mut seen = HashSet::new();
     for n in update_page_nrs {
         // We only need to check if the rule was _not_ respected
@@ -97,7 +104,7 @@ fn example_input() {
         .to_owned();
     let res = solve_day(input);
     assert_eq!(res.0, 143);
-    // assert_eq!(res.1, 81);
+    assert_eq!(res.1, 123);
 }
 
 #[test]

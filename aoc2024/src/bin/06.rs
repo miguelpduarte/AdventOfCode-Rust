@@ -33,8 +33,11 @@ impl Heading {
 
 // Could've used an enum but trying to be more space-efficient with u8s
 const GRID_EMPTY: u8 = 0;
-const GRID_OBSTACLE: u8 = 1;
-const GRID_SEEN: u8 = 2;
+const GRID_OBSTACLE: u8 = u8::MAX;
+// For part 2 onwards, considering "seen" as something that's _not_ empty but simply larger.
+// FIXME: Edge case where the guard crosses over a path u8::MAX (255) times and it becomes an
+// obstacle, but let's just ignore this case for now.
+const GRID_SEEN: u8 = 1;
 
 // TODO: Test making this a power of 2 to see if it's more efficient lol
 const MAX_GRID_SIZE: usize = 140;
@@ -44,11 +47,9 @@ fn solve_day(input: String) -> (usize, usize) {
     // So we can know when the guard goes off the grid
     let grid_size = input.lines().next().unwrap().len();
 
-    // Ensures we can keep this as a [] rather than Vec
+    // Ensures we can keep this as a [] rather than Vec which is probably faster
     assert!(grid_size <= MAX_GRID_SIZE);
 
-    // TODO: Think that there might be an issue with "wrapping"
-    // - might need to manually check bounds on right and left.
     let mut grid = [GRID_EMPTY; MAX_GRID_SIZE * MAX_GRID_SIZE];
 
     for (y, line) in input.trim_end().lines().enumerate() {
@@ -67,7 +68,9 @@ fn solve_day(input: String) -> (usize, usize) {
         }
     }
 
-    let (mut guard_x, mut guard_y) = guard_start_pos.expect("start position should be set");
+    let (mut guard_x, mut guard_y) = guard_start_pos
+        .clone()
+        .expect("start position should be set");
     // Mark starting position as seen
     grid[guard_x as usize + guard_y as usize * MAX_GRID_SIZE] = GRID_SEEN;
     // Guard always starts facing up
@@ -95,9 +98,12 @@ fn solve_day(input: String) -> (usize, usize) {
                 guard_heading = guard_heading.turn_right();
             }
             _ => {
-                *next_elem = GRID_SEEN;
+                *next_elem += 1;
                 guard_x = next_x;
                 guard_y = next_y;
+                // TODO: Idea for p2. If we cross over a path multiple times that means that we
+                // have a likely good candidate for obstacle placement.
+                // I need to think if this is actually true or not.
             }
         }
     }
@@ -105,9 +111,37 @@ fn solve_day(input: String) -> (usize, usize) {
     // TODO: Move this counting into above, can just check if the element was not previously seen.
     // TODO: We can also bench if it's faster to "cut-off" by iterating only within grid_size x
     // grid_size, rather than the whole array/matrix.
-    let p1 = grid.into_iter().filter(|&elem| elem == GRID_SEEN).count();
+    let p1 = grid
+        .iter()
+        // Due to the changes for p2, we basically are checking for non-empty and non-obstacle.
+        .filter(|&&elem| elem > GRID_EMPTY && elem != GRID_OBSTACLE)
+        .count();
 
-    let p2 = 0;
+    // TODO: P2. If the cycle detection isn't too bad, if we assume that we take 26us for the full
+    // p1, we can probably brute-force all options in under 1s (130*130*26us = ~0.4s)
+    let n_candidates = grid
+        .iter()
+        // If it has been walked over more than once, then placing an obstacle in one of the 4
+        // adjacent sides would create a loop (FIXME: Problem - we need to know how many, it can be
+        // just one or it can be multiple options for different sides)
+        // -> This probably relates to the value itself
+        .filter(|&&elem| elem > GRID_SEEN && elem != GRID_OBSTACLE)
+        .count();
+
+    println!(
+        "{:?}",
+        grid.iter()
+            // If it has been walked over more than once, then placing an obstacle in one of the 4
+            // adjacent sides would create a loop (FIXME: Problem - we need to know how many, it can be
+            // just one or it can be multiple options for different sides)
+            // -> This probably relates to the value itself
+            .filter(|&&elem| elem > GRID_SEEN && elem != GRID_OBSTACLE)
+            .collect::<Vec<_>>()
+    );
+    // TODO: Need to exclude guard's starting position from consideration (??).
+    // We probably need to do this properly above.
+    // Worst case scenario manually reset the grid or have some `if` here subtracting 1.
+    let p2 = n_candidates;
 
     (p1, p2)
 }
@@ -127,7 +161,7 @@ fn example_input() {
         .to_owned();
     let res = solve_day(input);
     assert_eq!(res.0, 41);
-    // assert_eq!(res.1, 81);
+    assert_eq!(res.1, 6);
 }
 
 #[test]

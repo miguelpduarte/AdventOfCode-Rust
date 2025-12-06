@@ -7,6 +7,23 @@ enum DiskItem {
     File { id: usize, size: usize },
 }
 
+// Idea: Track free space in a BTreeMap<usize (index), usize (free space length)>. Then we can get an
+// iterator for all the sets of free space within some indexes range in our disk, with:
+// BTreeMap::range or similar.
+// For p1, we spend them until the file is copied.
+// For p2, we check them until we have one that can fit our whole file (if any).
+//
+// The issue to consider is how to structure the overall state if we do this. We can also just use
+// this as a sort of cache and keep the same Vec disk structure, but I think that will be even more
+// confusing.
+// Maybe having a similar BTreeMap for files/file parts, key being the index in the disk and value
+// being the id and size. This way we can move things around in the first map and into the second,
+// and in the end to calculate the checksum we only need to go over the file parts which also
+// should save some time.
+// The potential footgun here is making sure that the indexes are always proper, since we no longer
+// have a backing Vec to mantain overall order between Free and File.
+// This should be fine, though, as we were already condensing these anyway.
+
 fn solve_day(input: String) -> (usize, usize) {
     let mut disk = vec![];
 
