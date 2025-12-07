@@ -58,7 +58,7 @@ macro_rules! do_day {
         }
     };
 
-    ($solver_fn:ident$(, p1:$prod_sol_part1:expr)?$(, p2:$prod_sol_part2:expr)?) => {
+    ($solver_fn:ident, p1:$prod_sol_part1:expr$(, p2:$prod_sol_part2:expr)?) => {
         $crate::do_day!($solver_fn);
 
         #[cfg(test)]
@@ -68,7 +68,7 @@ macro_rules! do_day {
             fn prod_solution() {
                 let input = ::std::fs::read_to_string(format!("inputs/{}.in", DAY_NAME)).unwrap();
                 let res = $solver_fn(input);
-                $(assert_eq!(res.0, $prod_sol_part1);)?
+                assert_eq!(res.0, $prod_sol_part1);
                 $(assert_eq!(res.1, $prod_sol_part2);)?
             }
         }
